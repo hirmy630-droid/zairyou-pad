@@ -286,7 +286,7 @@
                             </div>
                         </div>
                         <div>
-                            <div class="text-[14px] text-gray-300 mb-1">残寸法</div>
+                            <div class="text-[14px] text-gray-300 mb-1">余り寸法</div>
                             <div class="flex items-baseline gap-1">
                                 <span id="resQtyRemainder" class="text-[30px] font-bold">-</span>
                                 <span id="unitQtyRem" class="text-lg text-gray-300 hidden">㎜</span>
@@ -300,14 +300,14 @@
                     <div class="text-[15px] text-[#30d158] mb-2 font-bold uppercase tracking-wider">数量計算結果</div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <div class="text-[14px] text-gray-300 mb-1">働き幅 (@)</div>
+                            <div class="text-[14px] text-gray-300 mb-1">必要働き (@)</div>
                             <div class="flex items-baseline gap-1">
                                 <span id="resWidth" class="text-[30px] font-bold">-</span>
                                 <span id="unitWidth" class="text-lg text-gray-300 hidden">㎜</span>
                             </div>
                         </div>
                         <div>
-                            <div class="text-[14px] text-gray-300 mb-1">残寸法</div>
+                            <div class="text-[14px] text-gray-300 mb-1">余り寸法</div>
                             <div class="flex items-baseline gap-1">
                                 <span id="resWidthRemainder" class="text-[30px] font-bold">-</span>
                                 <span id="unitWidthRem" class="text-lg text-gray-300 hidden">㎜</span>
@@ -331,8 +331,8 @@
                     <thead>
                         <tr class="text-gray-300">
                             <!-- 各列の間に境界線を追加 -->
-                            <th class="text-[#0a84ff] w-1/2 border-r border-[#38383a]">働き計算</th>
-                            <th class="text-[#30d158] w-1/2 border-r border-[#38383a]">数量計算</th>
+                            <th class="text-[#0a84ff] w-1/2 border-r border-[#38383a]">働き基準</th>
+                            <th class="text-[#30d158] w-1/2 border-r border-[#38383a]">数量基準</th>
                             <th class="w-12"></th>
                         </tr>
                     </thead>
@@ -451,18 +451,22 @@
                 if(el) el.classList.add('hidden');
             });
             if (isNaN(L)) return;
+
+            // 働き基準：切り上げ枚数と、全幅からはみ出す「余り（切り落とし）」
             if (!isNaN(W) && W !== 0) {
                 const qty = Math.ceil(L / W);
-                const rem = L % W;
+                const rem = (qty * W) - L; 
                 resQuantity.innerText = formatNumber(qty);
                 resQtyRemainder.innerText = formatNumber(rem);
                 document.getElementById('resPitchLabel').innerText = `@${formatNumber(W)}`;
                 document.getElementById('unitQuantity').classList.remove('hidden');
                 document.getElementById('unitQtyRem').classList.remove('hidden');
             }
+
+            // 数量基準：切り上げ働き幅と、全幅からはみ出す「余り（切り落とし）」
             if (!isNaN(N) && N !== 0) {
                 const width = Math.ceil(L / N);
-                const rem = L % N;
+                const rem = (width * N) - L;
                 resWidth.innerText = formatNumber(width);
                 resWidthRemainder.innerText = formatNumber(rem);
                 document.getElementById('resCountLabel').innerText = `${formatNumber(N)}枚入`;
@@ -481,29 +485,27 @@
                 const noBadge = item.no ? `<span class="inline-block bg-zinc-700 text-[14px] px-2 py-0.5 rounded mr-2 align-middle font-bold text-white">No.${item.no}</span>` : '';
                 const memoInfo = item.memo ? `<div class="text-[14px] text-[#ff9f0a] mt-1 font-bold">L: ${item.memo}</div>` : '';
                 
-                // 働き計算データと数量計算データを取得 (互換性のための処理)
-                const hasW = !!item.totalLengthData || item.type === 'totalLength';
-                const hasN = !!item.countData || item.type === 'count';
-                const wData = item.totalLengthData || (item.type === 'totalLength' ? item : null);
-                const nData = item.countData || (item.type === 'count' ? item : null);
+                const hasW = !!item.totalLengthData;
+                const hasN = !!item.countData;
+                const wData = item.totalLengthData;
+                const nData = item.countData;
 
-                // 1列目 (働き計算)
+                // 1列目 (働き基準)
                 const td1 = document.createElement('td');
                 td1.className = "border-r border-[#38383a]";
-                if (hasW && wData) {
-                    td1.innerHTML = `<div class="text-[14px] text-gray-400 mb-1">${noBadge}W: ${wData.input || wData.inputNum}</div><div class="text-xl font-bold text-[#0a84ff]">${wData.result}枚</div><div class="text-[14px] text-gray-400">(@${wData.pitch}) 残:${wData.rem}</div>${memoInfo}`;
+                if (hasW) {
+                    td1.innerHTML = `<div class="text-[14px] text-gray-400 mb-1">${noBadge}W: ${wData.input}</div><div class="text-xl font-bold text-[#0a84ff]">${wData.result}枚</div><div class="text-[14px] text-gray-400">(@${wData.pitch}) 余:${wData.rem}</div>${memoInfo}`;
                     sumQ += wData.resultNum || 0; 
                     sumQR += wData.remNum || 0;
                 } else td1.innerHTML = `<span class="text-zinc-800">-</span>`;
                 
-                // 2列目 (数量計算)
+                // 2列目 (数量基準)
                 const td2 = document.createElement('td');
                 td2.className = "border-r border-[#38383a]";
-                if (hasN && nData) {
-                    // 両方ある場合はNo.バッジとメモは左列に任せる
+                if (hasN) {
                     const badge = (!hasW) ? noBadge : '';
                     const memo = (!hasW) ? memoInfo : '';
-                    td2.innerHTML = `<div class="text-[14px] text-gray-400 mb-1">${badge}${nData.input || nData.inputNum}枚</div><div class="text-xl font-bold text-[#30d158]">@${nData.result}㎜</div><div class="text-[14px] text-gray-400">残:${nData.rem}</div>${memo}`;
+                    td2.innerHTML = `<div class="text-[14px] text-gray-400 mb-1">${badge}${nData.input}枚</div><div class="text-xl font-bold text-[#30d158]">@${nData.result}㎜</div><div class="text-[14px] text-gray-400">余:${nData.rem}</div>${memo}`;
                     sumN += (nData.inputNum || 0); 
                     sumWR += (nData.remNum || 0);
                 } else td2.innerHTML = `<span class="text-zinc-800">-</span>`;
@@ -515,9 +517,9 @@
                 historyTableBody.appendChild(tr);
             });
             document.getElementById('totalQtySum').innerText = sumQ > 0 ? formatNumber(sumQ) + "枚" : "-";
-            document.getElementById('totalQtyRemSum').innerText = sumQ > 0 ? "残計:" + formatNumber(sumQR) + "㎜" : "-";
+            document.getElementById('totalQtyRemSum').innerText = sumQ > 0 ? "余り計:" + formatNumber(sumQR) + "㎜" : "-";
             document.getElementById('totalCountSum').innerText = sumN > 0 ? formatNumber(sumN) + "枚" : "-";
-            document.getElementById('totalWidthRemSum').innerText = sumN > 0 ? "残計:" + formatNumber(sumWR) + "㎜" : "-";
+            document.getElementById('totalWidthRemSum').innerText = sumN > 0 ? "余り計:" + formatNumber(sumWR) + "㎜" : "-";
             if (shouldSave) localStorage.setItem('waritsuke_history', JSON.stringify(historyData));
         }
 
@@ -534,7 +536,7 @@
             let hasN = !isNaN(N) && N !== 0;
 
             if (hasW) {
-                const qty = Math.ceil(L / W); const rem = L % W;
+                const qty = Math.ceil(L / W); const rem = (qty * W) - L;
                 entry.totalLengthData = {
                     input: formatNumber(L), pitch: formatNumber(W), 
                     resultNum: qty, result: formatNumber(qty), 
@@ -542,7 +544,7 @@
                 };
             }
             if (hasN) {
-                const width = Math.ceil(L / N); const rem = L % N;
+                const width = Math.ceil(L / N); const rem = (width * N) - L;
                 entry.countData = {
                     inputNum: N, input: formatNumber(N), 
                     resultNum: width, result: formatNumber(width), 
@@ -575,13 +577,7 @@
             });
             el.addEventListener('input', () => { calculate(); saveInputs(); });
             el.addEventListener('blur', (e) => { formatInputDisplay(e.target); saveInputs(); });
-            
-            // エンターキーで確定（フォーカスを外す）
-            el.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    e.target.blur();
-                }
-            });
+            el.addEventListener('keydown', (e) => { if (e.key === 'Enter') e.target.blur(); });
         });
     </script>
 </body>
