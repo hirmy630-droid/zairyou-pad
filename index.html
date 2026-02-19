@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>材料割付 - iPad Pro Edition</title>
+    <title>材料取り割付 - iPad Pro Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         :root {
@@ -220,7 +220,7 @@
         <!-- 左ペイン: 計算エリア -->
         <div class="pane">
             <header class="mb-8">
-                <h1 class="text-[28px] font-bold tracking-tight">材料割付</h1>
+                <h1 class="text-[28px] font-bold tracking-tight">材料取り割付</h1>
                 <p class="text-[14px] text-gray-400 uppercase tracking-[0.3em] mt-2">Kyowa Roof Pro Edition</p>
             </header>
 
@@ -286,7 +286,7 @@
                             </div>
                         </div>
                         <div>
-                            <div class="text-[14px] text-gray-300 mb-1">余り寸法</div>
+                            <div class="text-[14px] text-gray-300 mb-1">残材余り</div>
                             <div class="flex items-baseline gap-1">
                                 <span id="resQtyRemainder" class="text-[30px] font-bold">-</span>
                                 <span id="unitQtyRem" class="text-lg text-gray-300 hidden">㎜</span>
@@ -307,7 +307,7 @@
                             </div>
                         </div>
                         <div>
-                            <div class="text-[14px] text-gray-300 mb-1">余り寸法</div>
+                            <div class="text-[14px] text-gray-300 mb-1">残材余り</div>
                             <div class="flex items-baseline gap-1">
                                 <span id="resWidthRemainder" class="text-[30px] font-bold">-</span>
                                 <span id="unitWidthRem" class="text-lg text-gray-300 hidden">㎜</span>
@@ -330,7 +330,6 @@
                 <table class="history-table">
                     <thead>
                         <tr class="text-gray-300">
-                            <!-- 各列の間に境界線を追加 -->
                             <th class="text-[#0a84ff] w-1/2 border-r border-[#38383a]">働き基準</th>
                             <th class="text-[#30d158] w-1/2 border-r border-[#38383a]">数量基準</th>
                             <th class="w-12"></th>
@@ -343,12 +342,12 @@
             <!-- 合計エリア -->
             <div class="mt-6 grid grid-cols-2 gap-4">
                 <div class="bg-zinc-900 p-4 rounded-2xl border border-zinc-800 shadow-lg">
-                    <div class="text-[14px] text-gray-300 font-bold mb-1">合計数量</div>
+                    <div class="text-[14px] text-gray-300 font-bold mb-1">合計枚数</div>
                     <div id="totalQtySum" class="text-[28px] font-bold text-[#0a84ff]">-</div>
                     <div id="totalQtyRemSum" class="text-[14px] text-gray-400">-</div>
                 </div>
                 <div class="bg-zinc-900 p-4 rounded-2xl border border-zinc-800 shadow-lg">
-                    <div class="text-[14px] text-gray-300 font-bold mb-1">合計数量 (枚数)</div>
+                    <div class="text-[14px] text-gray-300 font-bold mb-1">合計枚数 (N)</div>
                     <div id="totalCountSum" class="text-[28px] font-bold text-[#30d158]">-</div>
                     <div id="totalWidthRemSum" class="text-[14px] text-gray-400">-</div>
                 </div>
@@ -386,14 +385,14 @@
         let historyData = [];
 
         window.onload = function() {
-            const savedHistory = localStorage.getItem('waritsuke_history');
+            const savedHistory = localStorage.getItem('waritsuke_history_ipad_v3');
             if (savedHistory) {
                 try {
                     historyData = JSON.parse(savedHistory);
                     updateHistoryTable(false);
                 } catch(e) { console.error(e); }
             }
-            const savedInputs = localStorage.getItem('waritsuke_inputs');
+            const savedInputs = localStorage.getItem('waritsuke_inputs_ipad_v3');
             if (savedInputs) {
                 try {
                     const inputs = JSON.parse(savedInputs);
@@ -452,7 +451,7 @@
             });
             if (isNaN(L)) return;
 
-            // 働き基準：切り上げ枚数と、全幅からはみ出す「余り（切り落とし）」
+            // 働き基準
             if (!isNaN(W) && W !== 0) {
                 const qty = Math.ceil(L / W);
                 const rem = (qty * W) - L; 
@@ -463,7 +462,7 @@
                 document.getElementById('unitQtyRem').classList.remove('hidden');
             }
 
-            // 数量基準：切り上げ働き幅と、全幅からはみ出す「余り（切り落とし）」
+            // 数量基準
             if (!isNaN(N) && N !== 0) {
                 const width = Math.ceil(L / N);
                 const rem = (width * N) - L;
@@ -494,7 +493,7 @@
                 const td1 = document.createElement('td');
                 td1.className = "border-r border-[#38383a]";
                 if (hasW) {
-                    td1.innerHTML = `<div class="text-[14px] text-gray-400 mb-1">${noBadge}W: ${wData.input}</div><div class="text-xl font-bold text-[#0a84ff]">${wData.result}枚</div><div class="text-[14px] text-gray-400">(@${wData.pitch}) 余:${wData.rem}</div>${memoInfo}`;
+                    td1.innerHTML = `<div class="text-[14px] text-gray-400 mb-1">${noBadge}W: ${wData.input}</div><div class="text-xl font-bold text-[#0a84ff]">${wData.result}枚</div><div class="text-[14px] text-gray-400">(@${wData.pitch}) 残:${wData.rem}</div>${memoInfo}`;
                     sumQ += wData.resultNum || 0; 
                     sumQR += wData.remNum || 0;
                 } else td1.innerHTML = `<span class="text-zinc-800">-</span>`;
@@ -505,7 +504,7 @@
                 if (hasN) {
                     const badge = (!hasW) ? noBadge : '';
                     const memo = (!hasW) ? memoInfo : '';
-                    td2.innerHTML = `<div class="text-[14px] text-gray-400 mb-1">${badge}${nData.input}枚</div><div class="text-xl font-bold text-[#30d158]">@${nData.result}㎜</div><div class="text-[14px] text-gray-400">余:${nData.rem}</div>${memo}`;
+                    td2.innerHTML = `<div class="text-[14px] text-gray-400 mb-1">${badge}${nData.input}枚</div><div class="text-xl font-bold text-[#30d158]">@${nData.result}㎜</div><div class="text-[14px] text-gray-400">残:${nData.rem}</div>${memo}`;
                     sumN += (nData.inputNum || 0); 
                     sumWR += (nData.remNum || 0);
                 } else td2.innerHTML = `<span class="text-zinc-800">-</span>`;
@@ -517,10 +516,10 @@
                 historyTableBody.appendChild(tr);
             });
             document.getElementById('totalQtySum').innerText = sumQ > 0 ? formatNumber(sumQ) + "枚" : "-";
-            document.getElementById('totalQtyRemSum').innerText = sumQ > 0 ? "余り計:" + formatNumber(sumQR) + "㎜" : "-";
+            document.getElementById('totalQtyRemSum').innerText = sumQ > 0 ? "残材計:" + formatNumber(sumQR) + "㎜" : "-";
             document.getElementById('totalCountSum').innerText = sumN > 0 ? formatNumber(sumN) + "枚" : "-";
-            document.getElementById('totalWidthRemSum').innerText = sumN > 0 ? "余り計:" + formatNumber(sumWR) + "㎜" : "-";
-            if (shouldSave) localStorage.setItem('waritsuke_history', JSON.stringify(historyData));
+            document.getElementById('totalWidthRemSum').innerText = sumN > 0 ? "残材計:" + formatNumber(sumWR) + "㎜" : "-";
+            if (shouldSave) localStorage.setItem('waritsuke_history_ipad_v3', JSON.stringify(historyData));
         }
 
         function manualSaveToHistory() {
@@ -560,10 +559,10 @@
 
         function deleteHistoryRow(index) { historyData.splice(index, 1); updateHistoryTable(); }
         function clearAllFields() { [totalLengthInput, memoDimInput, pitchInput, countInput, inputNo].forEach(el => { el.value = ''; updateUnitDisplay(el); }); calculate(); saveInputs(); }
-        function saveInputs() { const inputs = { totalLength: totalLengthInput.value, memoDim: memoDimInput.value, pitch: pitchInput.value, count: countInput.value, inputNo: inputNo.value }; localStorage.setItem('waritsuke_inputs', JSON.stringify(inputs)); }
+        function saveInputs() { const inputs = { totalLength: totalLengthInput.value, memoDim: memoDimInput.value, pitch: pitchInput.value, count: countInput.value, inputNo: inputNo.value }; localStorage.setItem('waritsuke_inputs_ipad_v3', JSON.stringify(inputs)); }
         function showConfirmModal() { if (historyData.length === 0) return; confirmModal.classList.remove('hidden'); }
         function hideConfirmModal() { confirmModal.classList.add('hidden'); }
-        function clearHistory() { historyData = []; localStorage.removeItem('waritsuke_history'); updateHistoryTable(false); hideConfirmModal(); }
+        function clearHistory() { historyData = []; localStorage.removeItem('waritsuke_history_ipad_v3'); updateHistoryTable(false); hideConfirmModal(); }
 
         [totalLengthInput, memoDimInput, pitchInput, countInput, inputNo].forEach(el => {
             el.addEventListener('focus', (e) => {
