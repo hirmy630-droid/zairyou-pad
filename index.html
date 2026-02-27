@@ -3,581 +3,718 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>材料取り割付 - iPad Pro Edition</title>
+    <title>材料取り 計算</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap');
+        
         :root {
             --ios-bg: #000000;
             --ios-secondary-bg: #1c1c1e;
-            --ios-tertiary-bg: #2c2c2e;
-            --ios-quaternary-bg: #3a3a3c;
+            --ios-tertiary-bg: #000000; 
+            --ios-quaternary-bg: #000000; 
             --ios-blue: #0a84ff;
             --ios-green: #30d158;
-            --ios-orange: #ff9f0a;
-            --ios-red: #ff3b30; 
+            --ios-orange: #f97316;
+            --ios-purple: #bf5af2;
             --ios-text: #ffffff;
-            --ios-text-secondary: #c7c7cc; 
-            --ios-separator: #38383a;
-            /* 幅の定義 */
-            --side-field-width: 80px;
-            /* 高さの定義 */
-            --height-base: 4.5rem;  /* 全幅(W)用 */
-            --height-short: 3.5rem; /* その他用 */
+            --ios-text-secondary: #8e8e93;
+            --ios-separator: #52525b;
         }
 
-        body {
-            background-color: var(--ios-bg);
-            color: var(--ios-text);
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Icons", "Helvetica Neue", Arial, sans-serif;
-            -webkit-tap-highlight-color: transparent;
+        body { 
+            font-family: 'Noto Sans JP', sans-serif; 
+            -webkit-tap-highlight-color: transparent; 
+            background-color: var(--ios-bg); 
+            font-size: 14px; 
+            color: var(--ios-text); 
             height: 100vh;
-            overflow: hidden;
+            overflow: hidden; 
+            overscroll-behavior: none;
         }
 
-        /* iPad 2ペインレイアウト */
-        .main-container {
-            display: grid;
-            grid-template-columns: 420px 1fr;
-            height: 100vh;
-            gap: 1px;
-            background-color: var(--ios-separator);
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+        
+        input::placeholder { font-size: 14px !important; font-weight: 400; color: #71717a !important; }
+        select { -webkit-appearance: none; -moz-appearance: none; appearance: none; }
+        
+        /* ボタンデザインの統一 */
+        .btn-3d { transition: all 0.1s; position: relative; top: 0; border-radius: 12px; }
+        .btn-3d:active { transform: translateY(2px); border-bottom-width: 0 !important; }
+        
+        .btn-3d-orange { 
+            background-color: var(--ios-orange) !important; 
+            border-bottom: 4px solid #9a3412 !important; 
+            padding-top: 0.5rem !important;
+            padding-bottom: 0.5rem !important;
         }
+        
+        .btn-3d-zinc { background: #3f3f46; border-bottom: 4px solid #18181b; }
+        .btn-3d-silver { background: #d4d4d8; border-bottom: 4px solid #71717a; color: #71717a; }
+        
+        /* スクロールバー非表示 */
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
-        .pane {
-            background-color: var(--ios-bg);
-            height: 100%;
-            overflow-y: auto;
-            padding: 24px;
-        }
+        .animate-fade-in { animation: fadeIn 0.15s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-        .history-pane {
-            background-color: #080808;
-            display: flex;
-            flex-direction: column;
-        }
+        /* 入力枠共有スタイル */
+        .yakumono-box-layout { background-color: var(--ios-tertiary-bg); border: 1px solid var(--ios-separator) !important; border-radius: 12px; padding: 0 12px; height: 2.8rem; display: flex; align-items: center; }
+        .yakumono-label-gray { font-size: 14px; font-weight: 700; color: var(--ios-text-secondary); width: 3.5rem; flex-shrink: 0; }
+        .yakumono-input-text { background: transparent; border: none; color: white; width: 100%; height: 100%; font-size: 20px; font-weight: 700; outline: none; }
+        
+        .yakumono-distance-frame { background-color: var(--ios-tertiary-bg); border: 1px solid var(--ios-separator) !important; border-radius: 12px; height: 2.8rem; display: flex; align-items: center; justify-content: center; padding: 0 1rem; }
+        .yakumono-distance-val { background: transparent; border: none; color: white; width: 100%; height: 100%; font-size: 20px; font-weight: 700; text-align: center; outline: none; }
 
-        /* 共通入力フィールド */
-        .input-field {
-            background-color: var(--ios-tertiary-bg);
-            border: 1px solid var(--ios-separator);
-            color: var(--ios-text);
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            width: 100%;
-            text-align: center;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+        .unified-input-row { background-color: var(--ios-tertiary-bg); border: 1px solid var(--ios-separator) !important; border-radius: 12px; height: 2.8rem; display: flex; align-items: center; padding: 0 1rem; transition: all 0.2s ease; }
+        .unified-label-left { font-size: 14px; font-weight: 700; color: var(--ios-text-secondary); flex-shrink: 0; width: 3rem; text-align: left; }
+        .unified-input-center { background: transparent; border: none; color: var(--ios-text); width: 100%; height: 100%; font-size: 20px; font-weight: 700; text-align: center; outline: none; }
+        
+        .unified-input-row.focus-blue:focus-within { border-width: 2px !important; border-color: var(--ios-blue) !important; }
+        .unified-input-row.focus-green:focus-within { border-width: 2px !important; border-color: var(--ios-green) !important; }
+        .unified-input-row.focus-orange:focus-within { border-width: 2px !important; border-color: var(--ios-orange) !important; }
+        .unified-input-row.focus-purple:focus-within { border-width: 2px !important; border-color: var(--ios-purple) !important; }
 
-        .field-short {
-            height: var(--height-short);
-            font-size: 1.25rem;
-            padding: 0.5rem;
-        }
+        .unified-standalone-input { background-color: var(--ios-tertiary-bg); border: 1px solid var(--ios-separator) !important; color: var(--ios-text); width: 100%; height: 2.8rem; border-radius: 12px; font-size: 20px; text-align: center; font-weight: 700; outline: none; transition: all 0.2s; }
+        .unified-standalone-input:focus { border-color: var(--ios-orange) !important; border-width: 2px !important; }
 
-        .field-base {
-            height: var(--height-base);
-            font-size: 1.5rem;
-            padding: 1rem;
-        }
+        .ios-card-base { background: #1c1c1e; border-radius: 18px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4); border: 1px solid #3a3a3c; }
+        .history-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .history-table th { padding: 8px 4px; border-bottom: 3px solid var(--ios-separator); font-size: 14px; }
+        .history-table td { padding: 6px 4px; border-bottom: 1px solid var(--ios-separator); vertical-align: middle; }
 
-        .input-field::placeholder {
-            font-size: 14px;
-            opacity: 0.5;
-        }
-
-        .input-field:focus {
-            background-color: var(--ios-quaternary-bg);
-            border-color: var(--ios-blue);
-            outline: none;
-            transform: scale(1.01);
-        }
-
-        #totalLength, #inputNo {
-            border: 1px solid var(--ios-orange);
-        }
-
-        .input-unit-display {
-            position: absolute;
-            right: 32px;
-            font-size: 14px;
-            color: var(--ios-text-secondary);
-            pointer-events: none;
-        }
-
-        .ios-label {
-            font-size: 14px;
-            font-weight: 600;
-            letter-spacing: 0.05em;
-            margin-bottom: 0.4rem;
-            text-transform: uppercase;
-        }
-
-        /* シルバー立体ボタン (クリア用) */
-        .btn-silver-3d {
-            background: linear-gradient(180deg, #f2f2f7 0%, #8e8e93 100%);
-            color: #1c1c1e;
-            font-weight: 800;
-            font-size: 14px;
-            border-radius: 12px;
-            border: 1px solid #d1d1d6;
-            box-shadow: 
-                0 3px 0 #48484a,
-                0 4px 8px rgba(0,0,0,0.5),
-                inset 0 1px 0 rgba(255,255,255,0.8);
-            white-space: nowrap;
-            width: var(--side-field-width); 
-            height: var(--height-short);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.1s ease;
-            cursor: pointer;
-            flex-shrink: 0;
-        }
-
-        .btn-silver-3d:active {
-            transform: translateY(2px);
-            box-shadow: 0 1px 0 #48484a, 0 1px 4px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.8);
-        }
-
-        /* オレンジ立体ボタン (保存用) */
-        .btn-orange-3d {
-            background: linear-gradient(180deg, #ffb340 0%, #ff9f0a 100%);
-            color: #ffffff;
-            font-weight: 800;
-            font-size: 20px;
-            border-radius: 16px;
-            border: 1px solid #ff9f0a;
-            box-shadow: 
-                0 4px 0 #b36b00,
-                0 6px 12px rgba(255,159,10,0.2),
-                inset 0 1px 0 rgba(255,255,255,0.4);
-            transition: all 0.1s ease;
-            cursor: pointer;
-        }
-
-        .btn-orange-3d:active {
-            transform: translateY(2px);
-            box-shadow: 0 2px 0 #b36b00, 0 2px 6px rgba(0,0,0,0.3);
-        }
-
-        /* レッド立体ボタン (全削除用) */
-        .btn-red-3d {
-            background: linear-gradient(180deg, #ff6b64 0%, var(--ios-red) 100%);
-            color: #ffffff;
-            font-weight: 800;
-            font-size: 14px;
-            border-radius: 20px;
-            border: 1px solid var(--ios-red);
-            box-shadow: 
-                0 3px 0 #c42b24,
-                0 4px 8px rgba(0,0,0,0.4),
-                inset 0 1px 0 rgba(255,255,255,0.3);
-            transition: all 0.1s ease;
-            cursor: pointer;
-            padding: 8px 16px;
-        }
-
-        .btn-red-3d:active {
-            transform: translateY(1.5px);
-            box-shadow: 0 1.5px 0 #c42b24, 0 1.5px 4px rgba(0,0,0,0.3);
-        }
-
-        /* カードデザイン基本 */
-        .card {
-            background: var(--ios-secondary-bg);
-            border-radius: 20px;
-            padding: 24px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-            border: 1px solid var(--ios-separator);
-        }
-
-        /* 左色帯（計算結果エリア用） */
-        .result-card { 
-            border-left: 8px solid var(--ios-blue);
-            padding-top: 16px;
-            padding-bottom: 16px;
-        }
-        .result-card-green { border-left-color: var(--ios-green); }
-
-        .pane::-webkit-scrollbar { width: 6px; }
-        .pane::-webkit-scrollbar-track { background: transparent; }
-        .pane::-webkit-scrollbar-thumb { background: var(--ios-quaternary-bg); border-radius: 10px; }
-
-        .history-table { width: 100%; border-collapse: separate; border-spacing: 0; }
-        /* 歴史見出し */
-        .history-table th { position: sticky; top: 0; background: var(--ios-tertiary-bg); z-index: 10; padding: 12px; font-size: 15px; }
-        .history-table td { border-bottom: 1px solid var(--ios-separator); padding: 16px 8px; }
-
+        .canvas-container { border: 1px solid #38383a; border-radius: 12px; overflow: hidden; background-color: #000000; width: 100%; position: relative; }
+        canvas { width: 100%; height: auto; display: block; }
     </style>
 </head>
-<body>
+<body class="bg-black flex flex-col h-screen">
+    <div id="root" class="flex flex-col flex-1 h-full overflow-hidden"></div>
 
-    <div class="main-container">
-        <!-- 左ペイン: 計算エリア -->
-        <div class="pane">
-            <header class="mb-8">
-                <h1 class="text-[28px] font-bold tracking-tight">材料取り割付</h1>
-                <p class="text-[14px] text-gray-400 uppercase tracking-[0.3em] mt-2">Kyowa Roof Pro Edition</p>
-            </header>
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useMemo } = React;
 
-            <div class="card space-y-6">
-                <!-- 寸法 (L) -->
-                <div>
-                    <label class="block ios-label text-[#ff9f0a]">寸法 (L)</label>
-                    <div class="flex gap-3 items-stretch">
-                        <div class="relative flex-grow flex items-center">
-                            <input type="text" id="memoDim" placeholder="L寸法入力" data-unit="㎜" inputmode="decimal" class="input-field field-short text-[#ff9f0a] font-bold">
-                            <span class="input-unit-display" id="unit-memoDim">㎜</span>
-                        </div>
-                        <button onclick="clearAllFields()" class="btn-silver-3d">クリア</button>
-                    </div>
-                </div>
+        // --- 1. ヘルパー関数 ---
+        const unformat = (val) => val ? val.toString().replace(/,/g, '') : '';
+        const toNum = (val) => parseFloat(unformat(val)) || 0;
+        const format = (val) => {
+            if (val === '' || val === undefined || val === null) return '';
+            const clean = unformat(val);
+            const num = parseFloat(clean);
+            return isNaN(num) ? val : Math.round(num).toLocaleString();
+        };
+        const getStored = (key, fallback) => {
+            const item = localStorage.getItem(key);
+            try { return item ? JSON.parse(item) : fallback; } catch(e) { return fallback; }
+        };
+        
+        const excelMod = (n, d) => d === 0 ? 0 : n - d * Math.floor(n / d);
 
-                <!-- 働き & 数量 -->
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block ios-label text-[#0a84ff]">働き (＠)</label>
-                        <input type="text" id="pitch" placeholder="働き" inputmode="decimal" class="input-field field-short text-[#0a84ff] font-bold">
-                    </div>
-                    <div>
-                        <label class="block ios-label text-[#30d158]">数量 (N)</label>
-                        <input type="text" id="count" placeholder="数量" inputmode="numeric" class="input-field field-short text-[#30d158] font-bold">
-                    </div>
-                </div>
+        const APPS = ['calc', 'alloc', 'kanamono', 'slope', 'tightframe'];
+        // タブ名変更：tightframe -> 屋根
+        const APP_NAMES = { 'calc': '役物', 'alloc': '材料', 'kanamono': '金物', 'slope': '勾配', 'tightframe': '屋根' };
 
-                <!-- 全幅 (W) & No. -->
-                <div>
-                    <div class="flex justify-between items-end mb-1">
-                        <label class="ios-label text-gray-300 mb-0">全幅 (W)</label>
-                        <label class="ios-label text-gray-300 mb-0 w-[80px] text-center">No.</label>
-                    </div>
-                    <div class="flex gap-3 items-stretch">
-                        <div class="relative flex-grow flex items-center">
-                            <input type="text" id="totalLength" placeholder="全幅入力" data-unit="㎜" inputmode="decimal" class="input-field field-base">
-                            <span class="input-unit-display" id="unit-totalLength">㎜</span>
-                        </div>
-                        <div class="w-[80px] shrink-0">
-                            <input type="text" id="inputNo" placeholder="No." inputmode="numeric" class="input-field field-base">
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 履歴に保存ボタン -->
-            <button onclick="manualSaveToHistory()" class="w-full py-3.5 btn-orange-3d mb-8 flex items-center justify-center gap-3">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                履歴に保存
-            </button>
-
-            <!-- 結果表示エリア -->
-            <div id="results" class="space-y-4">
-                <div class="card result-card">
-                    <div class="text-[15px] text-[#0a84ff] mb-2 font-bold uppercase tracking-wider">働き計算結果</div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <div class="text-[14px] text-gray-300 mb-1">必要数量</div>
-                            <div class="flex items-baseline gap-1">
-                                <span id="resQuantity" class="text-[30px] font-bold">-</span>
-                                <span id="unitQuantity" class="text-lg text-gray-300 hidden">枚</span>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="text-[14px] text-gray-300 mb-1">残材余り</div>
-                            <div class="flex items-baseline gap-1">
-                                <span id="resQtyRemainder" class="text-[30px] font-bold">-</span>
-                                <span id="unitQtyRem" class="text-lg text-gray-300 hidden">㎜</span>
-                            </div>
-                            <div id="resPitchLabel" class="text-[14px] text-blue-500/80 mt-1"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card result-card result-card-green">
-                    <div class="text-[15px] text-[#30d158] mb-2 font-bold uppercase tracking-wider">数量計算結果</div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <div class="text-[14px] text-gray-300 mb-1">必要働き (@)</div>
-                            <div class="flex items-baseline gap-1">
-                                <span id="resWidth" class="text-[30px] font-bold">-</span>
-                                <span id="unitWidth" class="text-lg text-gray-300 hidden">㎜</span>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="text-[14px] text-gray-300 mb-1">残材余り</div>
-                            <div class="flex items-baseline gap-1">
-                                <span id="resWidthRemainder" class="text-[30px] font-bold">-</span>
-                                <span id="unitWidthRem" class="text-lg text-gray-300 hidden">㎜</span>
-                            </div>
-                            <div id="resCountLabel" class="text-[14px] text-green-500/80 mt-1"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 右ペイン: 履歴エリア -->
-        <div class="pane history-pane">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-gray-400">計算履歴</h2>
-                <button onclick="showConfirmModal()" class="btn-red-3d">全削除</button>
-            </div>
-
-            <div class="bg-[#1c1c1e] rounded-2xl border border-[#38383a] overflow-hidden">
-                <table class="history-table">
-                    <thead>
-                        <tr class="text-gray-300">
-                            <th class="text-[#0a84ff] w-1/2 border-r border-[#38383a]">働き基準</th>
-                            <th class="text-[#30d158] w-1/2 border-r border-[#38383a]">数量基準</th>
-                            <th class="w-12"></th>
-                        </tr>
-                    </thead>
-                    <tbody id="historyTableBody" class="text-center"></tbody>
-                </table>
-            </div>
-
-            <!-- 合計エリア -->
-            <div class="mt-6 grid grid-cols-2 gap-4">
-                <div class="bg-zinc-900 p-4 rounded-2xl border border-zinc-800 shadow-lg">
-                    <div class="text-[14px] text-gray-300 font-bold mb-1">合計枚数</div>
-                    <div id="totalQtySum" class="text-[28px] font-bold text-[#0a84ff]">-</div>
-                    <div id="totalQtyRemSum" class="text-[14px] text-gray-400">-</div>
-                </div>
-                <div class="bg-zinc-900 p-4 rounded-2xl border border-zinc-800 shadow-lg">
-                    <div class="text-[14px] text-gray-300 font-bold mb-1">合計枚数 (N)</div>
-                    <div id="totalCountSum" class="text-[28px] font-bold text-[#30d158]">-</div>
-                    <div id="totalWidthRemSum" class="text-[14px] text-gray-400">-</div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 削除確認モーダル -->
-    <div id="confirmModal" class="fixed inset-0 bg-black/70 backdrop-blur-md z-[3000] hidden flex items-center justify-center p-6">
-        <div class="bg-[#2c2c2e] rounded-3xl w-full max-w-sm text-center overflow-hidden shadow-2xl">
-            <div class="p-8">
-                <div class="text-white text-xl font-bold mb-2">履歴を削除</div>
-                <div class="text-gray-400">すべての履歴データを消去しますか？</div>
-            </div>
-            <div class="flex border-t border-zinc-700">
-                <button onclick="hideConfirmModal()" class="flex-1 p-4 text-[#0a84ff] text-lg font-medium border-r border-zinc-700 active:bg-zinc-800">キャンセル</button>
-                <button onclick="clearHistory()" class="flex-1 p-4 text-red-500 text-lg font-bold active:bg-zinc-800">削除する</button>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        const totalLengthInput = document.getElementById('totalLength');
-        const memoDimInput = document.getElementById('memoDim');
-        const pitchInput = document.getElementById('pitch');
-        const countInput = document.getElementById('count');
-        const inputNo = document.getElementById('inputNo');
-        const resQuantity = document.getElementById('resQuantity');
-        const resQtyRemainder = document.getElementById('resQtyRemainder');
-        const resWidth = document.getElementById('resWidth');
-        const resWidthRemainder = document.getElementById('resWidthRemainder');
-        const historyTableBody = document.getElementById('historyTableBody');
-        const confirmModal = document.getElementById('confirmModal');
-
-        let historyData = [];
-
-        window.onload = function() {
-            const savedHistory = localStorage.getItem('waritsuke_history_ipad_v3');
-            if (savedHistory) {
-                try {
-                    historyData = JSON.parse(savedHistory);
-                    updateHistoryTable(false);
-                } catch(e) { console.error(e); }
-            }
-            const savedInputs = localStorage.getItem('waritsuke_inputs_ipad_v3');
-            if (savedInputs) {
-                try {
-                    const inputs = JSON.parse(savedInputs);
-                    totalLengthInput.value = inputs.totalLength || "";
-                    memoDimInput.value = inputs.memoDim || "";
-                    pitchInput.value = inputs.pitch || "";
-                    countInput.value = inputs.count || "";
-                    inputNo.value = inputs.inputNo || "";
-                    [totalLengthInput, memoDimInput, pitchInput, countInput, inputNo].forEach(el => formatInputDisplay(el));
-                    calculate();
-                } catch(e) { console.error(e); }
-            }
+        // --- 2. アイコンコンポーネント ---
+        const Icon = ({ name, size = 24, className = "" }) => {
+            const paths = {
+                calculator: <path d="M4 21v-13a3 3 0 0 1 3 -3h10a3 3 0 0 1 3 3v13a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
+                undo: <path d="M3 7v6h6M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
+                rotate: <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
+                trash: <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
+                x: <path d="M18 6 6 18M6 6l12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
+                layout: <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2zM4 9h16M9 4v16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
+                plus: <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />,
+                chevron: <path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            };
+            return (
+                <svg width={size} height={size} viewBox="0 0 24 24" className={className} xmlns="http://www.w3.org/2000/svg">
+                    {paths[name] || null}
+                </svg>
+            );
         };
 
-        function formatNumber(num) {
-            if (num === null || isNaN(num)) return "-";
-            return Math.round(num).toLocaleString('ja-JP');
-        }
+        // --- 3. メインアプリケーション ---
+        function App() {
+            const [activeApp, setActiveApp] = useState(() => localStorage.getItem('activeApp') || 'calc');
 
-        function parseValue(val) {
-            if (!val) return NaN;
-            const clean = val.toString().replace(/[^-0-9.]/g, '');
-            return parseFloat(clean);
-        }
+            // --- 参照用 Ref ---
+            const calcInputRef = useRef(null);
+            const productNameRef = useRef(null);
+            const stdLengthRef = useRef(null);
+            const overlapRef = useRef(null);
+            const totalDimRef = useRef(null);
+            const allocLRef = useRef(null);
+            const allocPitchRef = useRef(null);
+            const allocCountRef = useRef(null);
+            const allocWRef = useRef(null);
+            const allocNoRef = useRef(null);
+            const kanamonoPitchRef = useRef(null);
+            const kanamonoCountRef = useRef(null);
+            const kanamonoLengthRef = useRef(null);
+            const slopeL1Ref = useRef(null);
+            const slopeL2Ref = useRef(null);
+            const slopeWRef = useRef(null);
+            const slopePitchRef = useRef(null);
+            const slopeCanvasRef = useRef(null);
+            const tfTotalLRef = useRef(null);
 
-        function updateUnitDisplay(input) {
-            const unitSpan = document.getElementById('unit-' + input.id);
-            if (!unitSpan) return;
-            const val = parseValue(input.value);
-            unitSpan.style.display = !isNaN(val) ? 'block' : 'none';
-        }
+            // --- ステート ---
+            const [currentProductName, setCurrentProductName] = useState(() => localStorage.getItem('productName') || '');
+            const [stdLength, setStdLength] = useState(() => localStorage.getItem('stdLength') || '');
+            const [overlap, setOverlap] = useState(() => localStorage.getItem('overlap') || '');
+            const [totalDim, setTotalDim] = useState(() => localStorage.getItem('totalDim') || '');
+            const [cumulativeSum, setCumulativeSum] = useState(() => toNum(localStorage.getItem('cumulativeSum') || 0));
+            const [history, setHistory] = useState(() => getStored('gradient_calc_history', []));
+            const [savedTallies, setSavedTallies] = useState(() => getStored('gradient_calc_savedTallies', []));
+            
+            const [allocL, setAllocL] = useState(() => localStorage.getItem('allocL') || '');
+            const [allocPitch, setAllocPitch] = useState(() => localStorage.getItem('allocPitch') || '');
+            const [allocCount, setAllocCount] = useState(() => localStorage.getItem('allocCount') || '');
+            const [allocW, setAllocW] = useState(() => localStorage.getItem('allocW') || '');
+            const [allocNo, setAllocNo] = useState(() => localStorage.getItem('allocNo') || '');
+            const [allocSource, setAllocSource] = useState(() => localStorage.getItem('allocSource') || null);
+            const [allocHistory, setAllocHistory] = useState(() => getStored('waritsuke_history', []));
 
-        function formatInputDisplay(input) {
-            if (input.id === 'inputNo') return;
-            let num = parseValue(input.value);
-            if (isNaN(num)) {
-                input.value = "";
-                updateUnitDisplay(input);
-                return;
-            }
-            input.value = num.toLocaleString('ja-JP');
-            updateUnitDisplay(input);
-        }
+            const [kanaPitch, setKanaPitch] = useState(() => localStorage.getItem('kanaPitch') || '');
+            const [kanaCount, setKanaCount] = useState(() => localStorage.getItem('kanaCount') || '');
+            const [kanaLength, setKanaLength] = useState(() => localStorage.getItem('kanaLength') || '');
+            const [kanaHistory, setKanaHistory] = useState(() => getStored('kana_history', []));
 
-        function calculate() {
-            const L = parseValue(totalLengthInput.value);
-            const W = parseValue(pitchInput.value);
-            const N = parseValue(countInput.value);
-            resQuantity.innerText = "-"; resQtyRemainder.innerText = "-";
-            resWidth.innerText = "-"; resWidthRemainder.innerText = "-";
-            document.getElementById('resPitchLabel').innerText = "";
-            document.getElementById('resCountLabel').innerText = "";
-            ['unitQuantity', 'unitQtyRem', 'unitWidth', 'unitWidthRem'].forEach(id => {
-                const el = document.getElementById(id);
-                if(el) el.classList.add('hidden');
-            });
-            if (isNaN(L)) return;
+            const [slopeL1, setSlopeL1] = useState(() => localStorage.getItem('slopeL1') || '');
+            const [slopeL2, setSlopeL2] = useState(() => localStorage.getItem('slopeL2') || '');
+            const [slopeW, setSlopeW] = useState(() => localStorage.getItem('slopeW') || '');
+            const [slopePitch, setSlopePitch] = useState(() => localStorage.getItem('slopePitch') || '');
 
-            // 働き基準
-            if (!isNaN(W) && W !== 0) {
-                const qty = Math.ceil(L / W);
-                const rem = (qty * W) - L; 
-                resQuantity.innerText = formatNumber(qty);
-                resQtyRemainder.innerText = formatNumber(rem);
-                document.getElementById('resPitchLabel').innerText = `@${formatNumber(W)}`;
-                document.getElementById('unitQuantity').classList.remove('hidden');
-                document.getElementById('unitQtyRem').classList.remove('hidden');
-            }
+            const [tfSize, setTfSize] = useState(() => localStorage.getItem('tfSize') || '600');
+            const [tfTotalL, setTfTotalL] = useState(() => localStorage.getItem('tfTotalL') || '');
 
-            // 数量基準
-            if (!isNaN(N) && N !== 0) {
-                const width = Math.ceil(L / N);
-                const rem = (width * N) - L;
-                resWidth.innerText = formatNumber(width);
-                resWidthRemainder.innerText = formatNumber(rem);
-                document.getElementById('resCountLabel').innerText = `${formatNumber(N)}枚入`;
-                document.getElementById('unitWidth').classList.remove('hidden');
-                document.getElementById('unitWidthRem').classList.remove('hidden');
-            }
-        }
+            const [totalHistory, setTotalHistory] = useState(() => getStored('totalHistory', []));
+            const [openDropdown, setOpenDropdown] = useState(null);
+            const [isClearModalOpen, setIsClearModalOpen] = useState(false);
+            const [calcInput, setCalcInput] = useState('');
 
-        function updateHistoryTable(shouldSave = true) {
-            historyTableBody.innerHTML = '';
-            let sumQ = 0, sumQR = 0, sumN = 0, sumWR = 0;
-            historyData.slice().reverse().forEach((item, originalIdx) => {
-                const idx = historyData.length - 1 - originalIdx;
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-zinc-800/50 transition-colors";
-                const noBadge = item.no ? `<span class="inline-block bg-zinc-700 text-[14px] px-2 py-0.5 rounded mr-2 align-middle font-bold text-white">No.${item.no}</span>` : '';
-                const memoInfo = item.memo ? `<div class="text-[14px] text-[#ff9f0a] mt-1 font-bold">L: ${item.memo}</div>` : '';
-                
-                const hasW = !!item.totalLengthData;
-                const hasN = !!item.countData;
-                const wData = item.totalLengthData;
-                const nData = item.countData;
+            // --- データの自動保存 Effect ---
+            useEffect(() => {
+                localStorage.setItem('activeApp', activeApp);
+                localStorage.setItem('productName', currentProductName);
+                localStorage.setItem('stdLength', stdLength);
+                localStorage.setItem('overlap', overlap);
+                localStorage.setItem('totalDim', totalDim);
+                localStorage.setItem('cumulativeSum', cumulativeSum.toString());
+                localStorage.setItem('totalHistory', JSON.stringify(totalHistory));
+                localStorage.setItem('allocL', allocL);
+                localStorage.setItem('allocPitch', allocPitch);
+                localStorage.setItem('allocCount', allocCount);
+                localStorage.setItem('allocW', allocW);
+                localStorage.setItem('allocNo', allocNo);
+                if(allocSource) localStorage.setItem('allocSource', allocSource);
+                localStorage.setItem('kanaPitch', kanaPitch);
+                localStorage.setItem('kanaCount', kanaCount);
+                localStorage.setItem('kanaLength', kanaLength);
+                localStorage.setItem('slopeL1', slopeL1);
+                localStorage.setItem('slopeL2', slopeL2);
+                localStorage.setItem('slopeW', slopeW);
+                localStorage.setItem('slopePitch', slopePitch);
+                localStorage.setItem('tfSize', tfSize);
+                localStorage.setItem('tfTotalL', tfTotalL);
+            }, [activeApp, currentProductName, stdLength, overlap, totalDim, cumulativeSum, totalHistory, allocL, allocPitch, allocCount, allocW, allocNo, allocSource, kanaPitch, kanaCount, kanaLength, slopeL1, slopeL2, slopeW, slopePitch, tfSize, tfTotalL]);
 
-                // 1列目 (働き基準)
-                const td1 = document.createElement('td');
-                td1.className = "border-r border-[#38383a]";
-                if (hasW) {
-                    td1.innerHTML = `<div class="text-[14px] text-gray-400 mb-1">${noBadge}W: ${wData.input}</div><div class="text-xl font-bold text-[#0a84ff]">${wData.result}枚</div><div class="text-[14px] text-gray-400">(@${wData.pitch}) 残:${wData.rem}</div>${memoInfo}`;
-                    sumQ += wData.resultNum || 0; 
-                    sumQR += wData.remNum || 0;
-                } else td1.innerHTML = `<span class="text-zinc-800">-</span>`;
-                
-                // 2列目 (数量基準)
-                const td2 = document.createElement('td');
-                td2.className = "border-r border-[#38383a]";
-                if (hasN) {
-                    const badge = (!hasW) ? noBadge : '';
-                    const memo = (!hasW) ? memoInfo : '';
-                    td2.innerHTML = `<div class="text-[14px] text-gray-400 mb-1">${badge}${nData.input}枚</div><div class="text-xl font-bold text-[#30d158]">@${nData.result}㎜</div><div class="text-[14px] text-gray-400">残:${nData.rem}</div>${memo}`;
-                    sumN += (nData.inputNum || 0); 
-                    sumWR += (nData.remNum || 0);
-                } else td2.innerHTML = `<span class="text-zinc-800">-</span>`;
-                
-                const td3 = document.createElement('td');
-                td3.innerHTML = `<button onclick="deleteHistoryRow(${idx})" style="color: var(--ios-red)" class="opacity-40 hover:opacity-100 p-2"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>`;
-                
-                tr.append(td1, td2, td3);
-                historyTableBody.appendChild(tr);
-            });
-            document.getElementById('totalQtySum').innerText = sumQ > 0 ? formatNumber(sumQ) + "枚" : "-";
-            document.getElementById('totalQtyRemSum').innerText = sumQ > 0 ? "残材計:" + formatNumber(sumQR) + "㎜" : "-";
-            document.getElementById('totalCountSum').innerText = sumN > 0 ? formatNumber(sumN) + "枚" : "-";
-            document.getElementById('totalWidthRemSum').innerText = sumN > 0 ? "残材計:" + formatNumber(sumWR) + "㎜" : "-";
-            if (shouldSave) localStorage.setItem('waritsuke_history_ipad_v3', JSON.stringify(historyData));
-        }
-
-        function manualSaveToHistory() {
-            const L = parseValue(totalLengthInput.value);
-            const W = parseValue(pitchInput.value);
-            const N = parseValue(countInput.value);
-            const memoVal = memoDimInput.value;
-            const noVal = inputNo.value;
-            if (isNaN(L)) return;
-
-            let entry = { memo: memoVal, no: noVal };
-            let hasW = !isNaN(W) && W !== 0;
-            let hasN = !isNaN(N) && N !== 0;
-
-            if (hasW) {
-                const qty = Math.ceil(L / W); const rem = (qty * W) - L;
-                entry.totalLengthData = {
-                    input: formatNumber(L), pitch: formatNumber(W), 
-                    resultNum: qty, result: formatNumber(qty), 
-                    remNum: rem, rem: formatNumber(rem)
+            // --- スワイプジェスチャー ---
+            const touchStartX = useRef(0);
+            const touchStartY = useRef(0);
+            
+            useEffect(() => {
+                const handleStart = (e) => { 
+                    touchStartX.current = e.touches[0].clientX; 
+                    touchStartY.current = e.touches[0].clientY; 
                 };
-            }
-            if (hasN) {
-                const width = Math.ceil(L / N); const rem = (width * N) - L;
-                entry.countData = {
-                    inputNum: N, input: formatNumber(N), 
-                    resultNum: width, result: formatNumber(width), 
-                    remNum: rem, rem: formatNumber(rem)
+                const handleEnd = (e) => {
+                    if (e.target.tagName.toLowerCase() === 'input' || e.target.tagName.toLowerCase() === 'button' || e.target.tagName.toLowerCase() === 'select') return;
+                    
+                    const deltaX = touchStartX.current - e.changedTouches[0].clientX;
+                    const deltaY = Math.abs(touchStartY.current - e.changedTouches[0].clientY);
+                    
+                    if (deltaY < 60 && Math.abs(deltaX) > 80) {
+                        const currentIndex = APPS.indexOf(activeApp);
+                        if (deltaX > 0 && currentIndex < APPS.length - 1) setActiveApp(APPS[currentIndex + 1]);
+                        else if (deltaX < 0 && currentIndex > 0) setActiveApp(APPS[currentIndex - 1]);
+                    }
                 };
-            }
+                window.addEventListener('touchstart', handleStart, {passive: true});
+                window.addEventListener('touchend', handleEnd);
+                return () => {
+                    window.removeEventListener('touchstart', handleStart);
+                    window.removeEventListener('touchend', handleEnd);
+                };
+            }, [activeApp]);
 
-            if (hasW || hasN) {
-                historyData.push(entry);
-                updateHistoryTable();
-            }
-        }
-
-        function deleteHistoryRow(index) { historyData.splice(index, 1); updateHistoryTable(); }
-        function clearAllFields() { [totalLengthInput, memoDimInput, pitchInput, countInput, inputNo].forEach(el => { el.value = ''; updateUnitDisplay(el); }); calculate(); saveInputs(); }
-        function saveInputs() { const inputs = { totalLength: totalLengthInput.value, memoDim: memoDimInput.value, pitch: pitchInput.value, count: countInput.value, inputNo: inputNo.value }; localStorage.setItem('waritsuke_inputs_ipad_v3', JSON.stringify(inputs)); }
-        function showConfirmModal() { if (historyData.length === 0) return; confirmModal.classList.remove('hidden'); }
-        function hideConfirmModal() { confirmModal.classList.add('hidden'); }
-        function clearHistory() { historyData = []; localStorage.removeItem('waritsuke_history_ipad_v3'); updateHistoryTable(false); hideConfirmModal(); }
-
-        [totalLengthInput, memoDimInput, pitchInput, countInput, inputNo].forEach(el => {
-            el.addEventListener('focus', (e) => {
-                if (e.target.id === 'inputNo') {
-                    e.target.value = '';
-                } else {
-                    const val = parseValue(e.target.value);
-                    if (!isNaN(val)) e.target.value = val;
+            // --- 派生計算データ ---
+            const materialResult = useMemo(() => {
+                const total = toNum(totalDim), std = toNum(stdLength), over = toNum(overlap), effective = std - over;
+                if (total > 0 && effective > 0) {
+                    const pieces = Math.ceil(total / effective);
+                    return { pieces, remainder: (pieces * effective) - total };
                 }
-                setTimeout(() => e.target.select(), 50);
-            });
-            el.addEventListener('input', () => { calculate(); saveInputs(); });
-            el.addEventListener('blur', (e) => { formatInputDisplay(e.target); saveInputs(); });
-            el.addEventListener('keydown', (e) => { if (e.key === 'Enter') e.target.blur(); });
-        });
+                return { pieces: 0, remainder: 0 };
+            }, [totalDim, stdLength, overlap]);
+
+            const allocCalculated = useMemo(() => {
+                const L = toNum(allocW), W = toNum(allocPitch), N = toNum(allocCount);
+                let pitchMode = { q: '-', qRem: '-' }, countMode = { w: '-', wRem: '-' };
+                if (L > 0) {
+                    if (W > 0) { const q = Math.ceil(L / W); pitchMode = { q, qRem: (q * W) - L }; }
+                    if (N > 0) { const w = Math.ceil(L / N); countMode = { w, wRem: (w * N) - L }; }
+                }
+                return { pitchMode, countMode };
+            }, [allocW, allocPitch, allocCount]);
+
+            const kanamonoResults = useMemo(() => {
+                const L = toNum(kanaLength), W = toNum(kanaPitch), N = toNum(kanaCount);
+                let resQ = { val: '-', rem: '-' }, resW = { val: '-', rem: '-' };
+                if (L > 0) {
+                    if (W > 0) { const q = Math.floor(L / W) + 1; resQ = { val: q, rem: L - (W * (q - 1)) }; }
+                    if (N > 1) { const w = Math.floor(L / (N - 1)); resW = { val: w, rem: L - (w * (N - 1)) }; }
+                    else if (N === 1) resW = { val: 0, rem: L };
+                }
+                return { resQ, resW };
+            }, [kanaLength, kanaPitch, kanaCount]);
+
+            const kanamonoTableData = useMemo(() => {
+                const { resQ, resW } = kanamonoResults, L = toNum(kanaLength), W = toNum(kanaPitch), N = toNum(kanaCount);
+                const listQ = [], listN = [];
+                if (L > 0 && W > 0 && resQ.val !== '-') { let pos = resQ.rem / 2; for (let i = 0; i < resQ.val; i++) { listQ.push(Math.round(pos)); pos += W; } }
+                if (L > 0 && N > 0 && resW.val !== '-') { let pos = resW.rem / 2; for (let i = 0; i < N; i++) { listN.push(Math.round(pos)); pos += resW.val; } }
+                const maxRows = Math.max(listQ.length, listN.length), rows = [];
+                for (let i = 0; i < maxRows; i++) rows.push({ q: listQ[i], n: listN[i] });
+                return rows;
+            }, [kanaLength, kanaPitch, kanaCount, kanamonoResults]);
+
+            const slopeResults = useMemo(() => {
+                const a = toNum(slopeL1), c = toNum(slopeL2), b = toNum(slopeW), interval = toNum(slopePitch);
+                if (b <= 0 || interval <= 0) return { newB: '-', newC: '-', count: '-', step: '-', table: [] };
+                const count = Math.ceil(b / interval), newB = count * interval;
+                const slope = (c - a) / b, newC = a + (slope * newB), step = slope * interval;
+                const table = [];
+                for (let i = 0; i <= count; i++) {
+                    const dist = i * interval;
+                    table.push({ i, dist, height: Math.round(a + (slope * dist)) });
+                }
+                return { a, b, c, interval, newB, newC, count, step: Math.abs(step), table };
+            }, [slopeL1, slopeL2, slopeW, slopePitch]);
+
+            const tfResults = useMemo(() => {
+                const size = parseInt(tfSize) || 600;
+                const L = toNum(tfTotalL);
+                let yamaDim = 0, taniDim = 0;
+                if (size === 600) { yamaDim = 200; taniDim = 100; }
+                else if (size === 500) { yamaDim = 250; taniDim = 125; }
+                else if (size === 1000) { yamaDim = 500; taniDim = 250; }
+
+                if (L <= 0) return { centerL: '', yamaDim, taniDim, taniZan: '', yamaZan: '', table: [], count: 0 };
+
+                const centerL = L / 2;
+                const taniZan = excelMod(centerL, yamaDim);
+                const yamaZan = excelMod(centerL - taniDim, yamaDim);
+
+                let currentTani = taniZan;
+                let currentYama = yamaZan;
+                let table = [];
+                let count = 0;
+
+                while (currentTani <= L || currentYama <= L) {
+                    table.push({
+                        tani: (currentTani <= L && currentTani >= 0) ? currentTani : null,
+                        yama: (currentYama <= L && currentYama >= 0) ? currentYama : null
+                    });
+                    currentTani += size;
+                    currentYama += size;
+                    count++;
+                    if (count > 1000) break; 
+                }
+
+                return { centerL, yamaDim, taniDim, taniZan, yamaZan, table, count };
+            }, [tfSize, tfTotalL]);
+
+            const allocInputColorClass = allocSource === 'pitch' ? 'text-[#0a84ff]' : (allocSource === 'count' ? 'text-[#30d158]' : 'text-white');
+
+            // --- 関数ロジック ---
+            const handleFocus = (e) => e.target.select();
+            const handleEnterKey = (e, nextRef) => { if (e.key === 'Enter') { e.preventDefault(); nextRef.current?.focus(); } };
+            
+            const clearDistance = () => setTotalDim('');
+            const undoTotal = () => {
+                if (totalHistory.length === 0) return;
+                const nextH = [...totalHistory]; const last = nextH.pop();
+                setCumulativeSum(last.sum); setTotalDim(last.total); setTotalHistory(nextH);
+            };
+            const resetTotal = () => {
+                setTotalHistory([...totalHistory, { sum: cumulativeSum, total: totalDim }]);
+                setCumulativeSum(0); setTotalDim('');
+            };
+            const addValue = () => {
+                const val = toNum(calcInput);
+                if (val > 0) {
+                    setTotalHistory([...totalHistory, { sum: cumulativeSum, total: totalDim }]);
+                    setCumulativeSum(prev => prev + val);
+                    setTotalDim(prev => (toNum(prev) + val).toString());
+                    setCalcInput(''); setTimeout(() => calcInputRef.current?.focus(), 50);
+                }
+            };
+            const saveToHistoryManually = () => {
+                const pieces = materialResult.pieces;
+                const newHistory = [{id: Date.now().toString(), total: totalDim, std: stdLength, overlap: overlap, pieces: pieces, remainder: materialResult.remainder, createdAt: Date.now()}, ...history].slice(0, 50);
+                setHistory(newHistory); localStorage.setItem('gradient_calc_history', JSON.stringify(newHistory));
+            };
+            const saveHistoryTotal = () => {
+                if (history.length === 0) return;
+                const pieces = history.reduce((acc, cur) => acc + (cur.pieces || 0), 0);
+                const dist = history.reduce((acc, cur) => acc + toNum(cur.total), 0);
+                const newT = [{id: Date.now().toString(), name: currentProductName || '無題', pieces, totalDistance: dist, createdAt: Date.now()}, ...savedTallies];
+                setSavedTallies(newT); localStorage.setItem('gradient_calc_savedTallies', JSON.stringify(newT)); setCurrentProductName('');
+            };
+            const deleteHistoryItem = (id) => {
+                const newH = history.filter(item => item.id !== id);
+                setHistory(newH); localStorage.setItem('gradient_calc_history', JSON.stringify(newH));
+            };
+            const deleteTallyItem = (id) => {
+                const newTallies = savedTallies.filter(t => t.id !== id);
+                setSavedTallies(newTallies); localStorage.setItem('gradient_calc_savedTallies', JSON.stringify(newTallies));
+            };
+            const updateTallyName = (id, name) => {
+                const newTallies = savedTallies.map(t => t.id === id ? { ...t, name } : t);
+                setSavedTallies(newTallies); localStorage.setItem('gradient_calc_savedTallies', JSON.stringify(newTallies));
+            };
+
+            const clearAllocInputs = () => { setAllocL(''); setAllocPitch(''); setAllocCount(''); setAllocW(''); setAllocNo(''); setAllocSource(null); };
+            const saveAllocHistory = () => {
+                let entry = { id: Date.now(), L: format(allocW), memoL: allocL, no: allocNo, source: allocSource };
+                if (allocSource === 'pitch') entry = { ...entry, pitch: format(allocPitch), q: allocCalculated.pitchMode.q, rem: format(allocCalculated.pitchMode.qRem) };
+                else entry = { ...entry, count: allocCalculated.countMode.w, q: format(allocCount), rem: format(allocCalculated.countMode.wRem) };
+                const newH = [entry, ...allocHistory]; setAllocHistory(newH); localStorage.setItem('waritsuke_history', JSON.stringify(newH));
+            };
+
+            const clearKanamonoInputs = () => { setKanaPitch(''); setKanaCount(''); setKanaLength(''); };
+            const saveKanaHistory = () => {
+                const entry = { id: Date.now(), L: format(kanaLength), pitch: format(kanaPitch), count: format(kanaCount), resQ: kanamonoResults.resQ, resW: kanamonoResults.resW };
+                const newH = [entry, ...kanaHistory].slice(0, 50); setKanaHistory(newH); localStorage.setItem('kana_history', JSON.stringify(newH));
+            };
+
+            const clearSlopeInputs = () => { setSlopeL1(''); setSlopeL2(''); setSlopeW(''); setSlopePitch(''); };
+
+            // --- 勾配描画 ---
+            const drawSlopeCanvas = () => {
+                const canvas = slopeCanvasRef.current; if (!canvas) return;
+                const ctx = canvas.getContext('2d'), { a, b, c, newB, newC, count, interval } = slopeResults;
+                ctx.clearRect(0, 0, canvas.width, canvas.height); 
+                if (toNum(slopeW) <= 0 || toNum(slopePitch) <= 0) return;
+
+                const padding = {l:140, r:140, t:120, b:140}, scaleX = (canvas.width - (padding.l + padding.r)) / (newB || 1);
+                const maxHeight = Math.max(a, newC, c);
+                const scaleY = (canvas.height - (padding.t + padding.b)) / (maxHeight || 1);
+                const tx = (x) => padding.l + x * scaleX, ty = (y) => canvas.height - padding.b - y * scaleY;
+                
+                ctx.beginPath(); ctx.strokeStyle = '#1c1c1e'; ctx.lineWidth = 1;
+                for(let j=0; j<=maxHeight; j+=maxHeight/4) { ctx.moveTo(tx(0), ty(j)); ctx.lineTo(tx(newB), ty(j)); } ctx.stroke();
+                
+                ctx.beginPath(); ctx.strokeStyle = '#0a84ff'; ctx.lineWidth = 4;
+                ctx.moveTo(tx(0), ty(0)); ctx.lineTo(tx(newB), ty(0)); ctx.stroke();
+
+                for (let i = 0; i <= count; i++) {
+                    const cx = i * interval, cy = a + ((newC - a) / newB) * cx;
+                    ctx.beginPath();
+                    ctx.strokeStyle = (i === 0 || i === count) ? '#30d158' : '#2c2c2e';
+                    ctx.lineWidth = (i === 0 || i === count) ? 3 : 1.5;
+                    ctx.moveTo(tx(cx), ty(0)); ctx.lineTo(tx(cx), ty(cy)); ctx.stroke();
+                }
+
+                ctx.setLineDash([15, 10]); ctx.strokeStyle = '#ff453a'; ctx.lineWidth = 3;
+                ctx.beginPath(); ctx.moveTo(tx(b), ty(0)); ctx.lineTo(tx(b), ty(c)); ctx.stroke(); ctx.setLineDash([]);
+                ctx.font = "bold 32px sans-serif"; ctx.fillStyle = "#ff453a"; ctx.textAlign = "center";
+                ctx.fillText(`元W: ${Math.round(b).toLocaleString()}`, tx(b), canvas.height - padding.b + 110);
+
+                ctx.beginPath(); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 8; ctx.lineJoin = "round"; ctx.lineCap = "round";
+                ctx.moveTo(tx(0), ty(a)); ctx.lineTo(tx(newB), ty(newC)); ctx.stroke();
+                
+                ctx.font = "bold 38px sans-serif"; ctx.fillStyle = "#30d158"; ctx.textAlign = "center";
+                ctx.fillText(`L1: ${Math.round(a).toLocaleString()}`, tx(0), ty(a) - 35);
+                ctx.fillText(`L2: ${Math.round(newC).toLocaleString()}`, tx(newB), ty(newC) - 35);
+                
+                ctx.font = "bold 34px sans-serif"; ctx.textAlign = "center"; ctx.fillStyle = "#0a84ff";
+                ctx.fillText(`幅: ${Math.round(newB).toLocaleString()}`, tx(newB / 2), canvas.height - padding.b + 65);
+            };
+
+            useEffect(() => { 
+                if (activeApp === 'slope') {
+                    const timer = setTimeout(drawSlopeCanvas, 50);
+                    return () => clearTimeout(timer);
+                } 
+            }, [activeApp, slopeResults]);
+
+            return (
+                <div className="flex flex-col h-full overflow-hidden">
+                    <header className="px-4 sm:px-6 py-4 flex items-center justify-between border-b border-zinc-800 bg-black z-[100] shadow-md flex-shrink-0">
+                        <div className="flex items-center gap-3 sm:gap-6 w-full">
+                            <h1 className="text-[18px] sm:text-[20px] font-bold text-white whitespace-nowrap uppercase tracking-tight hidden sm:block">材料取り 計算</h1>
+                            <nav className="flex items-center bg-zinc-900 rounded-2xl p-1 gap-1 border border-zinc-800 shadow-lg w-full sm:w-auto overflow-x-auto scrollbar-hide">
+                                {APPS.map(app => (
+                                    <button key={app} onClick={() => setActiveApp(app)} className={`flex-shrink-0 flex items-center px-3 sm:px-4 py-1.5 rounded-xl text-[13px] sm:text-[14px] font-bold transition-all border-2 ${activeApp === app ? 'border-[#f97316] text-[#f97316]' : 'border-transparent text-zinc-500'}`}>
+                                        {APP_NAMES[app]}
+                                    </button>
+                                ))}
+                            </nav>
+                        </div>
+                        <p className="hidden md:block text-sm text-zinc-500 font-bold uppercase tracking-widest ml-4">KYOWA ROOF</p>
+                    </header>
+
+                    <main className="flex-1 overflow-hidden p-4 sm:p-6 bg-black relative">
+                        <div className="max-w-7xl mx-auto h-full overflow-hidden">
+                            <div className="animate-fade-in h-full overflow-hidden">
+                                {activeApp === 'calc' && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
+                                        <div className="space-y-6 md:overflow-y-auto scrollbar-hide pb-10 pr-1">
+                                            <section className="bg-zinc-900 p-4 rounded-2xl border border-zinc-800 space-y-4 shadow-xl">
+                                                <div className="yakumono-box-layout"><span className="yakumono-label-gray">品名</span><input ref={productNameRef} type="text" value={currentProductName} onFocus={handleFocus} onChange={(e) => setCurrentProductName(e.target.value)} onKeyDown={(e) => handleEnterKey(e, stdLengthRef)} className="yakumono-input-text" placeholder="例：水切り..." /></div>
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div className="yakumono-box-layout relative"><span className="yakumono-label-gray">長さ</span><input ref={stdLengthRef} type="text" inputMode="decimal" value={format(stdLength)} onFocus={handleFocus} onChange={(e) => setStdLength(unformat(e.target.value))} onKeyDown={(e) => handleEnterKey(e, overlapRef)} className="yakumono-input-text pr-6" placeholder="0" /><div className="absolute right-2 top-0 bottom-0 flex items-center text-zinc-500 pointer-events-none"><Icon name="chevron" size={16} /></div>
+                                                        <select value={stdLength} onChange={(e) => setStdLength(e.target.value)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                                                            <option value="" disabled>選択</option>
+                                                            <option value="2000">2,000</option><option value="2500">2,500</option><option value="3000">3,000</option><option value="4000">4,000</option>
+                                                        </select>
+                                                    </div>
+                                                    <div className="yakumono-box-layout relative"><span className="yakumono-label-gray">重ね</span><input ref={overlapRef} type="text" inputMode="decimal" value={format(overlap)} onFocus={handleFocus} onChange={(e) => setOverlap(unformat(e.target.value))} onKeyDown={(e) => handleEnterKey(e, totalDimRef)} className="yakumono-input-text pr-6" placeholder="0" /><div className="absolute right-2 top-0 bottom-0 flex items-center text-zinc-500 pointer-events-none"><Icon name="chevron" size={16} /></div>
+                                                        <select value={overlap} onChange={(e) => setOverlap(e.target.value)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                                                            <option value="" disabled>選択</option>
+                                                            <option value="30">30</option><option value="50">50</option><option value="70">70</option><option value="100">100</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-1"><label className="text-[12px] font-bold text-zinc-400 ml-1 block uppercase">距離（㎜）</label><div className="yakumono-distance-frame relative"><input ref={totalDimRef} type="text" inputMode="decimal" value={format(totalDim)} onFocus={handleFocus} onChange={(e) => setTotalDim(unformat(e.target.value))} onKeyDown={(e) => handleEnterKey(e, calcInputRef)} className="yakumono-distance-val" placeholder="取付け距離" /><button onClick={clearDistance} className="absolute right-3 top-0 bottom-0 text-zinc-500 hover:text-zinc-300"><Icon name="x" size={24} /></button></div></div>
+                                            </section>
+                                            <section className="bg-zinc-900 p-4 rounded-2xl border border-zinc-800 space-y-3 shadow-xl">
+                                                <div className="flex gap-2 items-stretch h-12"><input ref={calcInputRef} type="text" inputMode="decimal" value={format(calcInput)} onFocus={handleFocus} onChange={(e) => setCalcInput(unformat(e.target.value))} onKeyDown={(e) => e.key === 'Enter' && addValue()} className="flex-1 bg-zinc-950 border border-zinc-400 rounded-2xl text-lg text-white text-center font-bold" placeholder="加算" /><button onClick={addValue} className="w-14 shrink-0 rounded-xl flex items-center justify-center shadow-lg btn-3d btn-3d-silver"><Icon name="plus" size={24} /></button></div>
+                                                <div className="flex justify-between items-center px-2"><span className="text-[12px] font-bold text-zinc-400 uppercase tracking-widest">加算合計</span><div className="flex items-center gap-3"><span className="text-xl font-mono font-bold text-white">{format(cumulativeSum) || '0'}</span><button onClick={undoTotal} disabled={totalHistory.length === 0} className={`p-1.5 rounded-lg btn-3d ${totalHistory.length === 0 ? 'opacity-30' : 'btn-3d-zinc text-zinc-400'}`}><Icon name="undo" size={18} /></button><button onClick={resetTotal} className="p-1.5 rounded-lg btn-3d btn-3d-zinc text-zinc-400 active:text-red-400"><Icon name="rotate" size={18} /></button></div></div>
+                                            </section>
+                                            <button onClick={saveToHistoryManually} className="w-full py-2 btn-3d btn-3d-orange text-white font-bold text-[17px]">履歴に保存</button>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div className="bg-zinc-900 py-3 px-4 rounded-2xl border-2 border-green-500 flex flex-col items-start shadow-lg"><span className="text-[12px] font-bold text-zinc-300 uppercase">本数</span><div className="flex items-baseline gap-1"><span className="text-3xl font-mono font-bold text-green-500">{materialResult.pieces}</span><span className="text-[12px] font-bold text-zinc-400">本</span></div></div>
+                                                <div className="bg-zinc-900 py-3 px-4 rounded-2xl border-2 border-blue-500 flex flex-col items-start shadow-lg"><span className="text-[12px] font-bold text-zinc-300 uppercase">端材寸法</span><div className="flex items-baseline gap-1"><span className="text-3xl font-mono font-bold text-blue-500">{format(materialResult.remainder)}</span><span className="text-[12px] font-bold text-zinc-400">㎜</span></div></div>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-4 md:overflow-y-auto scrollbar-hide pb-10 pl-1">
+                                            <div className="flex items-center justify-between ml-1"><h3 className="text-[18px] font-bold text-zinc-300 uppercase">現在の履歴</h3><div className="flex items-center gap-1.5 shrink-0"><button onClick={saveHistoryTotal} className="h-8 px-3 rounded-lg text-[12px] font-bold btn-3d btn-3d-orange text-white whitespace-nowrap">合計保存</button><button onClick={() => setIsClearModalOpen(true)} className="h-8 w-10 flex items-center justify-center rounded-lg btn-3d btn-3d-zinc text-zinc-300 active:text-red-500"><Icon name="trash" size={18} /></button></div></div>
+                                            <div className="bg-zinc-900 py-3 px-4 rounded-2xl border-2 border-zinc-600 shadow-md">
+                                                <div className="flex flex-col gap-2">
+                                                    <div className="flex items-baseline justify-between"><span className="text-zinc-400 text-[12px] font-bold uppercase">総距離:</span><span className="text-zinc-200 text-[16px] font-bold">{format(history.reduce((a,c)=>a+toNum(c.total),0))} ㎜</span></div>
+                                                    <div className="flex items-center justify-between border-t border-zinc-800 pt-2"><div className="flex items-baseline gap-2"><span className="text-zinc-400 text-[12px] font-bold uppercase">本数:</span><span className="text-2xl font-mono font-bold text-green-500">{history.reduce((a,c)=>a+(c.pieces||0),0)}</span></div><span className="text-blue-400 text-[18px] font-mono font-bold">{format(history.reduce((a,c)=>a+(toNum(c.remainder)||0),0))} ㎜</span></div>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">{history.length === 0 ? <div className="text-center py-6 text-zinc-700 italic font-bold">履歴なし</div> : history.map(item => (<div key={item.id} className="bg-zinc-900 border border-zinc-800 rounded-xl flex items-stretch shadow-sm animate-fade-in overflow-hidden"><div className="flex-1 py-3 px-4 flex flex-col justify-center"><div className="text-[12px] font-bold text-zinc-500">距離: {format(item.total)} ㎜</div><div className="flex items-center gap-4"><span className="text-xl font-mono font-bold text-green-500">{item.pieces}本</span><span className="text-xl font-mono font-bold text-blue-500">{format(item.remainder)}㎜</span></div></div><button onClick={() => deleteHistoryItem(item.id)} className="w-12 bg-zinc-950 border-l border-zinc-800 text-zinc-600 hover:text-red-500 transition-all"><Icon name="trash" size={20} /></button></div>))}</div>
+                                            
+                                            <h3 className="text-[18px] font-bold text-orange-500 uppercase mt-8 ml-1 tracking-widest">種類別保存リスト</h3>
+                                            <div className="space-y-3">{savedTallies.length === 0 ? <div className="text-center py-4 bg-zinc-900/20 border border-dashed border-zinc-800 rounded-xl italic text-zinc-600">保存データなし</div> : savedTallies.map(t => (<div key={t.id} className="bg-zinc-900 rounded-2xl border-2 border-orange-500 flex items-stretch shadow-md overflow-hidden animate-fade-in"><div className="flex-1 p-3 space-y-2"><input type="text" value={t.name} onChange={(e) => updateTallyName(t.id, e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-lg py-1.5 px-3 text-[14px] text-zinc-200 outline-none font-bold" /><div className="flex justify-between items-baseline px-1"><div className="flex items-baseline gap-1"><span className="text-2xl font-bold text-green-500">{t.pieces}</span><span className="text-[12px] text-zinc-500 uppercase font-bold">本</span></div><span className="text-[14px] text-zinc-300 font-bold">{format(t.totalDistance)} ㎜</span></div></div><button onClick={() => deleteTallyItem(t.id)} className="w-12 bg-zinc-950/50 text-zinc-600 hover:text-red-500 border-l border-zinc-800 transition-all"><Icon name="trash" size={16} /></button></div>))}</div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {activeApp === 'alloc' && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
+                                        <div className="space-y-6 md:overflow-y-auto scrollbar-hide pb-10 pr-1">
+                                            <div className="ios-card-base p-5 space-y-4 shadow-2xl">
+                                                <div className="flex gap-2"><div className="unified-input-row focus-orange flex-1"><span className="unified-label-left">寸法</span><input ref={allocLRef} type="text" inputMode="decimal" value={format(allocL)} onFocus={handleFocus} onChange={(e) => setAllocL(unformat(e.target.value))} onKeyDown={(e) => handleEnterKey(e, allocWRef)} className="unified-input-center text-[#ff9f0a]" placeholder="L寸法" /></div><button onClick={clearAllocInputs} className="w-20 btn-3d btn-3d-zinc text-white text-[14px] font-bold shrink-0">クリア</button></div>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="unified-input-row focus-blue"><span className="unified-label-left text-[#0a84ff]">働き</span><input ref={allocPitchRef} type="text" inputMode="decimal" value={allocSource === 'count' ? allocCalculated.countMode.w : format(allocPitch)} onFocus={handleFocus} onChange={(e) => { setAllocPitch(unformat(e.target.value)); setAllocSource('pitch'); }} onKeyDown={(e) => handleEnterKey(e, allocWRef)} className={`unified-input-center ${allocInputColorClass}`} placeholder="ピッチ" /></div>
+                                                    <div className="unified-input-row focus-green">
+                                                        <span className="unified-label-left text-[#30d158]">数量</span>
+                                                        <input ref={allocCountRef} type="text" inputMode="numeric" value={allocSource === 'pitch' ? allocCalculated.pitchMode.q : format(allocCount)} onFocus={handleFocus} onChange={(e) => { setAllocCount(unformat(e.target.value)); setAllocSource('count'); }} onKeyDown={(e) => handleEnterKey(e, allocWRef)} className={`unified-input-center ${allocInputColorClass}`} placeholder="数量" />
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-2"><div className="flex-1"><label className="ios-label-outside text-gray-400 font-bold uppercase text-[12px] ml-1">全幅 (W)</label><input ref={allocWRef} type="text" inputMode="decimal" value={format(allocW)} onFocus={handleFocus} onChange={(e) => setAllocW(unformat(e.target.value))} onKeyDown={(e) => handleEnterKey(e, allocNoRef)} className="unified-standalone-input text-white" placeholder="全幅を入力" /></div><div className="w-24"><label className="ios-label-outside text-gray-400 text-center font-bold uppercase text-[12px]">番号</label><input ref={allocNoRef} type="text" value={allocNo} onFocus={handleFocus} onChange={(e) => setAllocNo(e.target.value)} className="unified-standalone-input text-white" placeholder="No." /></div></div>
+                                            </div>
+                                            <button onClick={saveAllocHistory} className="w-full py-2 btn-3d btn-3d-orange text-white font-bold text-[17px]">履歴に保存</button>
+                                            <div className="space-y-4">
+                                                <h3 className="text-[18px] font-bold text-zinc-300 uppercase ml-1">計算結果</h3>
+                                                <div className="result-card-ios p-3 shadow-lg" style={{borderLeft: '6px solid #0a84ff', background: '#1c1c1e', borderRadius: '12px'}}><div className="text-[14px] text-zinc-400 font-bold uppercase mb-1">働き基準 結果</div><div className="grid grid-cols-2 gap-4 border-t border-zinc-700 pt-2"><div><div className="text-[14px] text-blue-500 font-bold uppercase">必要数量</div><div className="flex items-baseline gap-1 text-blue-500"><span className="text-3xl font-bold">{allocCalculated.pitchMode.q}</span><span className="text-[12px] font-bold uppercase">枚</span></div></div><div><div className="text-[14px] text-gray-500 font-bold uppercase">残材余り</div><div className="flex items-baseline gap-1 text-gray-300"><span className="text-3xl font-bold">{allocCalculated.pitchMode.qRem}</span><span className="text-[12px] font-bold uppercase">㎜</span></div></div></div></div>
+                                                <div className={`result-card-ios p-3 shadow-lg`} style={{borderLeft: '6px solid #30d158', background: '#1c1c1e', borderRadius: '12px'}}><div className="text-[14px] text-zinc-400 font-bold uppercase mb-1">数量基準 結果</div><div className="grid grid-cols-2 gap-4 border-t border-zinc-700 pt-2"><div><div className="text-[14px] text-green-500 font-bold uppercase">必要働き</div><div className="flex items-baseline gap-1 text-green-500"><span className="text-3xl font-bold">{allocCalculated.countMode.w}</span><span className="text-[12px] font-bold uppercase">㎜</span></div></div><div><div className="text-[14px] text-gray-500 font-bold uppercase">残材余り</div><div className="flex items-baseline gap-1 text-gray-300"><span className="text-3xl font-bold">{allocCalculated.countMode.wRem}</span><span className="text-[12px] font-bold uppercase">㎜</span></div></div></div></div>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-4 md:overflow-y-auto scrollbar-hide pb-10 pl-1">
+                                            <div className="flex justify-between items-center px-1"><h3 className="text-[18px] font-bold text-zinc-300 uppercase">割付履歴</h3><button onClick={() => { setAllocHistory([]); localStorage.removeItem('waritsuke_history'); }} className="text-[12px] text-zinc-600 hover:text-red-500 font-bold">履歴消去</button></div>
+                                            <div className="bg-[#1c1c1e] rounded-xl border border-zinc-800 overflow-hidden shadow-2xl"><table className="history-table"><thead><tr className="bg-[#2c2c2e] sticky top-0 z-10"><th className="text-[#0a84ff] border-r border-[#545458] font-bold uppercase">働き基準</th><th className="text-[#30d158] border-r border-[#545458] font-bold uppercase">数量基準</th><th className="w-[10%]"></th></tr></thead><tbody>{allocHistory.length === 0 ? <tr><td colSpan="3" className="text-center py-10 text-zinc-700 italic">履歴なし</td></tr> : allocHistory.map(item => (<tr key={item.id} className="border-b border-[#545458]"><td className="border-r border-[#545458] text-center p-2">{item.source === 'pitch' ? <div><div className="text-zinc-500 text-xs font-bold uppercase">W:{item.L} ㎜</div><div className="text-[#0a84ff] text-xl font-bold">{item.q}枚</div><div className="text-xs text-zinc-400 font-bold">@{item.pitch}</div></div> : '-'}</td><td className="border-r border-[#545458] text-center p-2">{item.source === 'count' ? <div><div className="text-zinc-500 text-xs font-bold uppercase">W:{item.L} ㎜</div><div className="text-[#30d158] text-xl font-bold">{item.q}枚</div><div className="text-xs text-zinc-400 font-bold">@{item.count}</div></div> : '-'}</td><td className="text-center"><button onClick={() => setAllocHistory(allocHistory.filter(i => i.id !== item.id))} className="text-zinc-600 hover:text-red-500 transition-all"><Icon name="trash" size={20} /></button></td></tr>))}</tbody></table></div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {activeApp === 'kanamono' && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
+                                        <div className="space-y-6 md:overflow-y-auto scrollbar-hide pb-10 pr-1">
+                                            <div className="bg-zinc-900 p-5 rounded-2xl border border-zinc-800 space-y-4 shadow-xl">
+                                                <div className="grid grid-cols-2 gap-4"><div className="unified-input-row focus-blue"><span className="unified-label-left text-[#0a84ff]">働き</span><input ref={kanamonoPitchRef} type="text" inputMode="decimal" value={format(kanaPitch)} onFocus={handleFocus} onChange={(e) => setKanaPitch(unformat(e.target.value))} onKeyDown={(e) => handleEnterKey(e, kanamonoLengthRef)} className="unified-input-center text-[#0a84ff]" placeholder="ピッチ" /></div><div className="unified-input-row focus-green"><span className="unified-label-left text-[#30d158]">本数</span><input ref={kanamonoCountRef} type="text" inputMode="numeric" value={format(kanaCount)} onFocus={handleFocus} onChange={(e) => setKanaCount(unformat(e.target.value))} onKeyDown={(e) => handleEnterKey(e, kanamonoLengthRef)} className="unified-input-center text-[#30d158]" placeholder="本数" /></div></div>
+                                                <div className="flex gap-2"><div className="flex-1"><label className="ios-label-outside text-gray-400 font-bold uppercase text-[12px] ml-1">全幅 (W)</label><input ref={kanamonoLengthRef} type="text" inputMode="decimal" value={format(kanaLength)} onFocus={handleFocus} onChange={(e) => setKanaLength(unformat(e.target.value))} onKeyDown={(e) => e.key === 'Enter' && e.target.blur()} className="unified-standalone-input text-white" placeholder="全幅を入力" /></div><div className="w-24 flex flex-col justify-end"><button onClick={clearKanamonoInputs} className="w-full h-[2.8rem] btn-3d btn-3d-zinc text-white font-bold border border-[#48484a] text-[13px]">クリア</button></div></div>
+                                            </div>
+                                            <button onClick={saveKanaHistory} className="w-full py-2 btn-3d btn-3d-orange text-white font-bold text-[17px]">履歴に保存</button>
+                                            <div className="space-y-4">
+                                                <h3 className="text-[18px] font-bold text-zinc-300 uppercase ml-1">計算結果</h3>
+                                                <div className="result-card-ios p-3 shadow-lg" style={{borderLeft: '6px solid #0a84ff', background: '#1c1c1e', borderRadius: '12px'}}><div className="text-[14px] text-zinc-400 font-bold uppercase mb-1">働き基準 結果</div><div className="grid grid-cols-2 gap-4 border-t border-zinc-700 pt-2"><div><div className="text-[14px] text-[#0a84ff] font-bold uppercase">必要本数</div><div className="flex items-baseline gap-1 text-[#0a84ff]"><span className="text-3xl font-bold">{kanamonoResults.resQ.val}</span><span className="text-[12px] font-bold uppercase">本</span></div></div><div><div className="text-[14px] text-gray-500 font-bold uppercase tracking-widest">余り合計</div><div className="flex items-baseline gap-1 text-gray-300"><span className="text-3xl font-bold">{format(kanamonoResults.resQ.rem)}</span><span className="text-[12px] font-bold uppercase">㎜</span></div></div></div></div>
+                                                <div className="result-card-ios p-3 shadow-lg" style={{borderLeft: '6px solid #30d158', background: '#1c1c1e', borderRadius: '12px'}}><div className="text-[14px] text-zinc-400 font-bold uppercase mb-1">本数基準 結果</div><div className="grid grid-cols-2 gap-4 border-t border-zinc-700 pt-2"><div><div className="text-[14px] text-[#30d158] font-bold uppercase">必要働き</div><div className="flex items-baseline gap-1 text-[#30d158]"><span className="text-3xl font-bold">{format(kanamonoResults.resW.val)}</span><span className="text-[12px] font-bold uppercase">㎜</span></div></div><div><div className="text-[14px] text-gray-500 font-bold uppercase tracking-widest">余り合計</div><div className="flex items-baseline gap-1 text-gray-300"><span className="text-3xl font-bold">{format(kanamonoResults.resW.rem)}</span><span className="text-[12px] font-bold uppercase">㎜</span></div></div></div></div>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-4 md:overflow-y-auto scrollbar-hide pb-10 pl-1">
+                                            <div className="flex justify-between items-center px-1"><h3 className="text-[18px] font-bold text-zinc-300 uppercase tracking-widest">割付墨出し寸法 / 履歴</h3><button onClick={() => { setKanaHistory([]); localStorage.removeItem('kana_history'); }} className="text-[12px] text-zinc-600 hover:text-red-500 font-bold">履歴消去</button></div>
+                                            <div className="bg-[#1c1c1e] rounded-xl border border-zinc-800 overflow-hidden shadow-2xl animate-fade-in"><div className="bg-zinc-800 p-3 flex justify-between items-center border-b border-zinc-700"><h2 className="text-base font-bold text-white uppercase">割付寸法</h2><span className="bg-[#f97316] px-3 py-1 rounded-full text-black font-bold text-[12px] whitespace-nowrap uppercase font-bold">W {format(kanaLength)}</span></div><div className="max-h-[500px] overflow-y-auto scrollbar-hide"><table className="history-table"><thead className="sticky top-0 bg-[#1c1c1e] z-10"><tr className="bg-[#2c2c2e]"><th className="text-[#0a84ff] border-r border-[#545458] w-1/2 font-bold uppercase">働き位置</th><th className="text-[#30d158] font-bold w-1/2 uppercase">本数位置</th></tr></thead><tbody className="text-center font-bold text-lg">{kanamonoTableData.length === 0 ? <tr><td colSpan="2" className="py-20 text-zinc-600 italic font-bold text-[14px]">データなし</td></tr> : kanamonoTableData.map((row, idx) => (<tr key={idx} className="border-b border-[#545458]"><td className="py-3 border-r border-[#545458] text-[#0a84ff]">{row.q !== undefined ? format(row.q) : '-'}</td><td className="py-3 text-[#30d158]">{row.n !== undefined ? format(row.n) : '-'}</td></tr>))}</tbody></table></div></div>
+                                            {kanaHistory.length > 0 && <div className="space-y-2 mt-4">{kanaHistory.map(item => (<div key={item.id} className="bg-zinc-900 border border-zinc-800 rounded-xl flex items-stretch shadow-sm overflow-hidden"><div className="flex-1 py-2 px-3 flex flex-col justify-center"><div className="text-[12px] font-bold text-zinc-500 font-bold uppercase">W: {item.L} ㎜</div><div className="flex items-center gap-4"><span className="text-lg font-bold text-[#0a84ff]">{item.resQ.val}本</span><span className="text-lg font-bold text-[#30d158]">@{item.resW.val}</span></div></div><button onClick={() => { const newH = kanaHistory.filter(i => i.id !== item.id); setKanaHistory(newH); localStorage.setItem('kana_history', JSON.stringify(newH)); }} className="w-12 bg-zinc-950 border-l border-zinc-800 text-zinc-600 hover:text-red-500 transition-all"><Icon name="trash" size={20} /></button></div>))}</div>}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {activeApp === 'slope' && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
+                                        <div className="space-y-6 md:overflow-y-auto scrollbar-hide pb-10 pr-1">
+                                            <div className="ios-card-base p-5 space-y-4 shadow-2xl">
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="unified-input-row focus-green"><span className="unified-label-left text-[#30d158]">L1</span><input ref={slopeL1Ref} type="text" inputMode="decimal" value={format(slopeL1)} onFocus={handleFocus} onChange={(e) => setSlopeL1(unformat(e.target.value))} onKeyDown={(e) => handleEnterKey(e, slopeL2Ref)} className="unified-input-center text-[#30d158]" placeholder="基準" /></div>
+                                                    <div className="unified-input-row focus-green"><span className="unified-label-left text-[#30d158]">L2</span><input ref={slopeL2Ref} type="text" inputMode="decimal" value={format(slopeL2)} onFocus={handleFocus} onChange={(e) => setSlopeL2(unformat(e.target.value))} onKeyDown={(e) => handleEnterKey(e, slopeWRef)} className="unified-input-center text-[#30d158]" placeholder="延長" /></div>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="unified-input-row focus-blue"><span className="unified-label-left text-[#0a84ff]">幅W</span><input ref={slopeWRef} type="text" inputMode="decimal" value={format(slopeW)} onFocus={handleFocus} onChange={(e) => setSlopeW(unformat(e.target.value))} onKeyDown={(e) => handleEnterKey(e, slopePitchRef)} className="unified-input-center text-[#0a84ff]" placeholder="幅" /></div>
+                                                    <div className="unified-input-row focus-purple"><span className="unified-label-left text-[#bf5af2]">働き</span><input ref={slopePitchRef} type="text" inputMode="decimal" value={format(slopePitch)} onFocus={handleFocus} onChange={(e) => setSlopePitch(unformat(e.target.value))} onKeyDown={(e) => e.key === 'Enter' && e.target.blur()} className="unified-input-center text-[#bf5af2]" placeholder="ピッチ" /></div>
+                                                </div>
+                                                <button onClick={clearSlopeInputs} className="w-full h-[2.2rem] btn-3d btn-3d-zinc text-white font-bold border border-[#48484a] text-[13px]">リセット</button>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div className="bg-[#0a84ff15] border border-[#0a84ff44] p-3 rounded-xl text-center"><span className="block text-[12px] text-[#0a84ff] font-bold uppercase mb-1">延長後W</span><span className="text-xl font-bold text-[#0a84ff]">{format(slopeResults.newB)}</span><span className="text-[12px] ml-1 text-gray-500 uppercase">㎜</span></div>
+                                                <div className="bg-[#30d15815] border border-[#30d15844] p-3 rounded-xl text-center"><span className="block text-[12px] text-[#30d158] font-bold uppercase mb-1">延長後L2</span><span className="text-xl font-bold text-[#30d158]">{format(slopeResults.newC)}</span><span className="text-[12px] ml-1 text-gray-500 uppercase">㎜</span></div>
+                                                <div className="bg-[#ff9f0a15] border border-[#ff9f0a44] p-3 rounded-xl text-center"><span className="block text-[12px] text-[#ff9f0a] font-bold uppercase mb-1">区間数</span><span className="text-xl font-bold text-[#ff9f0a]">{slopeResults.count}</span><span className="text-[12px] ml-1 text-gray-500 uppercase">枚</span></div>
+                                                <div className="bg-[#bf5af215] border border-[#bf5af244] p-3 rounded-xl text-center"><span className="block text-[12px] text-[#bf5af2] font-bold uppercase mb-1">増分/区間</span><span className="text-xl font-bold text-[#bf5af2]">{format(slopeResults.step)}</span><span className="text-[12px] ml-1 text-gray-500 uppercase">㎜</span></div>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-4 md:overflow-y-auto scrollbar-hide pb-10 pl-1 h-full">
+                                            <div className="canvas-container shadow-2xl bg-black aspect-video"><canvas ref={slopeCanvasRef} width="1200" height="700"></canvas></div>
+                                            <div className="ios-card-base overflow-hidden flex-shrink-0"><div className="bg-zinc-800 p-2 text-center text-[12px] font-bold text-zinc-400 uppercase">勾配寸法表</div><table className="history-table text-center w-full"><thead><tr className="bg-[#2c2c2e] sticky top-0"><th className="text-[#ff9f0a] font-bold uppercase py-2">No.</th><th className="text-[#0a84ff] font-bold uppercase py-2">働き</th><th className="text-[#30d158] font-bold uppercase py-2">長さ</th></tr></thead><tbody>{slopeResults.table.map(row => (<tr key={row.i} className="border-b border-[#38383a]"><td className="py-2 text-[#ff9f0a] font-bold text-[20px]">{row.i}</td><td className="text-[#0a84ff] font-bold text-[20px]">{format(row.dist)}</td><td className="text-[#30d158] font-bold text-[20px]">{format(row.height)}</td></tr>))}</tbody></table></div>
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                {activeApp === 'tightframe' && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
+                                        <div className="space-y-6 md:overflow-y-auto scrollbar-hide pb-10 pr-1">
+                                            <div className="ios-card-base p-4 space-y-3 shadow-2xl">
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div className="unified-input-row focus-orange relative border-[#38383a]">
+                                                        <span className="unified-label-left text-gray-400">サイズ</span>
+                                                        <select value={tfSize} onChange={(e) => setTfSize(e.target.value)} className="unified-input-center text-white appearance-none pr-6 bg-transparent outline-none border-none">
+                                                            <option value="600" className="bg-zinc-800 text-white">600</option>
+                                                            <option value="500" className="bg-zinc-800 text-white">500</option>
+                                                            <option value="1000" className="bg-zinc-800 text-white">1000</option>
+                                                        </select>
+                                                        <div className="absolute right-2 top-0 bottom-0 flex items-center pointer-events-none text-zinc-500"><Icon name="chevron" size={16} /></div>
+                                                    </div>
+                                                    <div className="unified-input-row border-dashed border-[#38383a] bg-[#000000]">
+                                                        <span className="unified-label-left text-gray-400">全長芯</span>
+                                                        <input type="text" readOnly value={format(tfResults.centerL)} className="unified-input-center text-gray-400 border-none outline-none" placeholder="-" />
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label className="ios-label-outside text-gray-400 font-bold uppercase text-[12px] ml-1">全長 (L)</label>
+                                                    <input ref={tfTotalLRef} type="text" inputMode="decimal" value={format(tfTotalL)} onFocus={handleFocus} onChange={(e) => setTfTotalL(unformat(e.target.value))} onKeyDown={(e) => {if(e.key==='Enter') e.target.blur()}} className="unified-standalone-input text-white border-[#ff9f0a]" placeholder="数値を入力" />
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div className="flex items-baseline justify-center gap-2 py-2">
+                                                        <span className="text-[12px] text-gray-500 font-bold uppercase">山寸法</span>
+                                                        <span className="text-xl font-bold text-gray-300">{format(tfResults.yamaDim)}</span>
+                                                    </div>
+                                                    <div className="flex items-baseline justify-center gap-2 py-2">
+                                                        <span className="text-[12px] text-gray-500 font-bold uppercase">谷寸法</span>
+                                                        <span className="text-xl font-bold text-gray-300">{format(tfResults.taniDim)}</span>
+                                                    </div>
+                                                </div>
+                                                <button onClick={() => { setTfTotalL(''); setTfSize('600'); }} className="w-full h-[2.2rem] btn-3d btn-3d-zinc text-white font-bold border border-[#48484a] text-[13px]">リセット</button>
+                                            </div>
+
+                                            <div className="space-y-4">
+                                                <h3 className="text-[18px] font-bold text-[#ff9f0a] uppercase tracking-widest ml-1">端部 基準寸法</h3>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="result-card-ios p-3 shadow-lg" style={{borderLeft: '6px solid #0a84ff', background: '#1c1c1e', borderRadius: '12px'}}>
+                                                        <div className="text-[14px] text-[#0a84ff] font-bold uppercase mb-1">谷芯</div>
+                                                        <div className="flex items-baseline gap-1 text-white mb-2"><span className="text-3xl font-bold">{tfResults.taniZan !== '' ? format(tfResults.taniZan) : '-'}</span></div>
+                                                        <div className="text-[12px] text-gray-400 font-bold">屋根割付: {tfResults.yamaZan !== '' ? format(tfResults.yamaZan) : '-'} ㎜</div>
+                                                    </div>
+                                                    <div className="result-card-ios p-3 shadow-lg" style={{borderLeft: '6px solid #30d158', background: '#1c1c1e', borderRadius: '12px'}}>
+                                                        <div className="text-[14px] text-[#30d158] font-bold uppercase mb-1">山芯</div>
+                                                        <div className="flex items-baseline gap-1 text-white mb-2"><span className="text-3xl font-bold">{tfResults.yamaZan !== '' ? format(tfResults.yamaZan) : '-'}</span></div>
+                                                        <div className="text-[12px] text-gray-400 font-bold">屋根割付: {tfResults.taniZan !== '' ? format(tfResults.taniZan) : '-'} ㎜</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-4 md:overflow-y-auto scrollbar-hide pb-10 pl-1 h-full">
+                                            <div className="flex justify-between items-center px-1">
+                                                <h3 className="text-[18px] font-bold text-zinc-300 uppercase tracking-widest">割付表</h3>
+                                                <div className="bg-[#ff9f0a15] border border-[#ff9f0a44] px-3 py-1 rounded-full text-[#ff9f0a] font-bold text-[14px]">
+                                                    合計: {tfResults.count} 本
+                                                </div>
+                                            </div>
+                                            <div className="bg-[#1c1c1e] rounded-xl border border-zinc-800 overflow-hidden shadow-2xl animate-fade-in">
+                                                <div className="bg-zinc-800 p-2 flex justify-between items-center border-b border-zinc-700">
+                                                    <h2 className="text-[12px] font-bold text-zinc-400 uppercase">端からの墨出し寸法</h2>
+                                                    <span className="text-zinc-500 text-[12px] uppercase font-bold">単位: ㎜</span>
+                                                </div>
+                                                <div className="max-h-[600px] overflow-y-auto scrollbar-hide">
+                                                    <table className="history-table w-full">
+                                                        <thead className="sticky top-0 bg-[#1c1c1e] z-10">
+                                                            <tr className="bg-[#2c2c2e]">
+                                                                <th className="text-[#0a84ff] border-r border-[#545458] w-1/2 font-bold uppercase py-2">谷芯</th>
+                                                                <th className="text-[#30d158] font-bold w-1/2 uppercase py-2">山芯</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="text-center font-bold text-lg">
+                                                            {tfResults.table.length === 0 ? (
+                                                                <tr><td colSpan="2" className="py-20 text-zinc-600 italic font-bold text-[14px]">全長を入力してください</td></tr>
+                                                            ) : (
+                                                                tfResults.table.map((row, idx) => (
+                                                                    <tr key={idx} className="border-b border-[#545458]">
+                                                                        <td className="py-3 border-r border-[#545458] text-[#0a84ff] font-bold text-[20px]">{row.tani !== null ? format(row.tani) : '-'}</td>
+                                                                        <td className="py-3 text-[#30d158] font-bold text-[20px]">{row.yama !== null ? format(row.yama) : '-'}</td>
+                                                                    </tr>
+                                                                ))
+                                                            )}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                            </div>
+                        </div>
+                    </main>
+
+                    {isClearModalOpen && (
+                        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+                            <div className="bg-zinc-900 border border-zinc-700 rounded-3xl p-6 w-full max-w-sm shadow-2xl animate-fade-in text-center">
+                                <h3 className="text-[20px] font-bold text-white mb-2">履歴の全削除</h3>
+                                <p className="text-zinc-400 text-[14px] mb-6 font-bold">保存履歴をすべて削除します。<br/>本当によろしいですか？</p>
+                                <div className="flex gap-3">
+                                    <button onClick={() => setIsClearModalOpen(false)} className="flex-1 py-3 rounded-xl font-bold btn-3d btn-3d-zinc text-white text-[16px] text-center">キャンセル</button>
+                                    <button onClick={() => { setHistory([]); localStorage.removeItem('gradient_calc_history'); setIsClearModalOpen(false); }} className="flex-1 py-3 rounded-xl font-bold btn-3d btn-3d-red text-white text-[16px] text-center">削除する</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
     </script>
 </body>
 </html>
