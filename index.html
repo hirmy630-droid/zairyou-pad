@@ -11,6 +11,8 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <!-- Babel for JSX -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- html2canvas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap');
         
@@ -81,7 +83,7 @@
             transition: all 0.2s ease; 
         }
         .yakumono-box-layout:focus-within { border-color: var(--ios-orange) !important; border-width: 2px !important; }
-        .yakumono-label-gray { font-size: 14px; font-weight: 700; color: var(--ios-text-secondary); width: 3.8rem; flex-shrink: 0; display: flex; align-items: center; }
+        .yakumono-label-gray { font-size: 14px; font-weight: 700; color: var(--ios-text-secondary); width: 4.5rem; flex-shrink: 0; display: flex; align-items: center; }
         
         .yakumono-input-text { 
             background: transparent; 
@@ -166,6 +168,7 @@
         const APPS = ['calc', 'alloc', 'tightframe', 'kanamono', 'slope'];
         const APP_NAMES = { 'calc': '役物', 'alloc': '材料', 'tightframe': '屋根', 'kanamono': '金物', 'slope': '勾配' };
 
+        // --- 2. アイコンコンポーネント ---
         const Icon = ({ name, size = 24, className = "" }) => {
             const paths = {
                 undo: <path d="M3 7v6h6M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
@@ -182,11 +185,108 @@
             );
         };
 
+        // --- 3. 屋根図面コンポーネント (画像ファイルの代わり) ---
+        const RoofProfileSVG = ({ size }) => {
+            if (size === '600') {
+                return (
+                    <svg viewBox="0 0 650 180" className="w-full h-full text-white drop-shadow-md">
+                        {/* 寸法線 */}
+                        <line x1="40" y1="20" x2="610" y2="20" stroke="#8e8e93" strokeWidth="1" />
+                        <line x1="40" y1="15" x2="40" y2="25" stroke="#8e8e93" strokeWidth="1" />
+                        <line x1="610" y1="15" x2="610" y2="25" stroke="#8e8e93" strokeWidth="1" />
+                        <text x="325" y="15" fill="#8e8e93" fontSize="14" fontWeight="bold" textAnchor="middle">600</text>
+                        
+                        {/* 200のピッチ線 */}
+                        <line x1="40" y1="40" x2="230" y2="40" stroke="#8e8e93" strokeWidth="1" />
+                        <line x1="230" y1="40" x2="420" y2="40" stroke="#8e8e93" strokeWidth="1" />
+                        <line x1="420" y1="40" x2="610" y2="40" stroke="#8e8e93" strokeWidth="1" />
+                        <text x="135" y="35" fill="#8e8e93" fontSize="12" textAnchor="middle">200</text>
+                        <text x="325" y="35" fill="#8e8e93" fontSize="12" textAnchor="middle">200</text>
+                        <text x="515" y="35" fill="#8e8e93" fontSize="12" textAnchor="middle">200</text>
+                        
+                        {/* 断面プロファイル (簡略化) */}
+                        <polyline points="10,80 20,50 60,50 115,140 155,140 210,50 250,50 305,140 345,140 400,50 440,50 495,140 535,140 590,50 630,50 640,80" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinejoin="round" />
+                        
+                        {/* 縦線と詳細寸法 */}
+                        <line x1="40" y1="45" x2="40" y2="80" stroke="#8e8e93" strokeWidth="1" strokeDasharray="3,3" />
+                        <text x="40" y="95" fill="#8e8e93" fontSize="12" textAnchor="middle">33.5</text>
+                        <text x="135" y="160" fill="#8e8e93" fontSize="12" textAnchor="middle">35</text>
+                        <text x="325" y="160" fill="#8e8e93" fontSize="12" textAnchor="middle">35</text>
+                        <text x="515" y="160" fill="#8e8e93" fontSize="12" textAnchor="middle">35</text>
+                        <text x="230" y="90" fill="#8e8e93" fontSize="12" textAnchor="middle">35</text>
+                        <text x="420" y="90" fill="#8e8e93" fontSize="12" textAnchor="middle">35</text>
+                    </svg>
+                );
+            } else if (size === '500') {
+                return (
+                    <svg viewBox="0 0 560 220" className="w-full h-full text-white drop-shadow-md">
+                        {/* 寸法線 */}
+                        <line x1="30" y1="20" x2="530" y2="20" stroke="#8e8e93" strokeWidth="1" />
+                        <line x1="30" y1="15" x2="30" y2="25" stroke="#8e8e93" strokeWidth="1" />
+                        <line x1="530" y1="15" x2="530" y2="25" stroke="#8e8e93" strokeWidth="1" />
+                        <text x="280" y="15" fill="#8e8e93" fontSize="14" fontWeight="bold" textAnchor="middle">500</text>
+                        
+                        {/* ピッチ線 */}
+                        <line x1="30" y1="200" x2="280" y2="200" stroke="#8e8e93" strokeWidth="1" />
+                        <line x1="280" y1="200" x2="530" y2="200" stroke="#8e8e93" strokeWidth="1" />
+                        <text x="155" y="215" fill="#8e8e93" fontSize="12" textAnchor="middle">250</text>
+                        <text x="405" y="215" fill="#8e8e93" fontSize="12" textAnchor="middle">250</text>
+                        
+                        {/* プロファイル */}
+                        <polyline points="15,60 20,40 60,40 135,170 175,170 260,40 300,40 375,170 415,170 500,40 540,40 545,60" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinejoin="round" />
+                        
+                        {/* 詳細 */}
+                        <line x1="30" y1="40" x2="30" y2="195" stroke="#8e8e93" strokeWidth="1" strokeDasharray="3,3" />
+                        <line x1="280" y1="40" x2="280" y2="195" stroke="#8e8e93" strokeWidth="1" strokeDasharray="3,3" />
+                        <text x="40" y="35" fill="#8e8e93" fontSize="12" textAnchor="middle">38</text>
+                        <text x="280" y="35" fill="#8e8e93" fontSize="12" textAnchor="middle">38</text>
+                        <text x="155" y="185" fill="#8e8e93" fontSize="12" textAnchor="middle">38</text>
+                        <text x="395" y="185" fill="#8e8e93" fontSize="12" textAnchor="middle">38</text>
+                        
+                        {/* 高さ */}
+                        <line x1="10" y1="40" x2="20" y2="40" stroke="#8e8e93" strokeWidth="1" />
+                        <line x1="10" y1="170" x2="135" y2="170" stroke="#8e8e93" strokeWidth="1" strokeDasharray="3,3" />
+                        <text x="20" y="110" fill="#8e8e93" fontSize="12" textAnchor="end">150</text>
+                    </svg>
+                );
+            } else if (size === '1000') {
+                return (
+                    <svg viewBox="0 0 540 220" className="w-full h-full text-white drop-shadow-md">
+                        {/* 寸法線 */}
+                        <line x1="40" y1="20" x2="500" y2="20" stroke="#8e8e93" strokeWidth="1" />
+                        <line x1="40" y1="15" x2="40" y2="25" stroke="#8e8e93" strokeWidth="1" />
+                        <line x1="500" y1="15" x2="500" y2="25" stroke="#8e8e93" strokeWidth="1" />
+                        <text x="270" y="15" fill="#8e8e93" fontSize="14" fontWeight="bold" textAnchor="middle">500</text>
+                        
+                        {/* プロファイル (深いV字型) */}
+                        <polyline points="20,70 30,50 45,50 45,70 70,70 160,190 380,190 470,70 510,70 510,50 490,50 490,80" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinejoin="round" />
+                        
+                        {/* 中心線など */}
+                        <line x1="40" y1="20" x2="40" y2="210" stroke="#8e8e93" strokeWidth="1" strokeDasharray="3,3" />
+                        <line x1="500" y1="20" x2="500" y2="210" stroke="#8e8e93" strokeWidth="1" strokeDasharray="3,3" />
+                        
+                        <text x="270" y="210" fill="#8e8e93" fontSize="14" textAnchor="middle">200</text>
+                        <text x="270" y="130" fill="#8e8e93" fontSize="14" textAnchor="middle">160 / 183</text>
+                        <text x="40" y="10" fill="#8e8e93" fontSize="12" textAnchor="middle">A</text>
+                        <text x="500" y="10" fill="#8e8e93" fontSize="12" textAnchor="middle">B</text>
+                    </svg>
+                );
+            }
+            return null;
+        };
+
+
+        // --- 4. メインコンポーネント ---
         function App() {
+            const handleFocus = (e) => { if (e && e.target && e.target.select) e.target.select(); };
+            const handleEnterKey = (e, nextRef) => { if (e.key === 'Enter') { e.preventDefault(); nextRef.current?.focus(); } };
+
             const [activeApp, setActiveApp] = useState(() => localStorage.getItem('activeApp') || 'calc');
             
+            // --- Refs ---
             const mainRef = useRef(null);
             const calcInputRef = useRef(null);
+            const allocCalcInputRef = useRef(null);
             const productNameRef = useRef(null);
             const stdLengthRef = useRef(null);
             const overlapRef = useRef(null);
@@ -206,6 +306,7 @@
             const slopeCanvasRef = useRef(null);
             const tfTotalLRef = useRef(null);
 
+            // --- States ---
             const [currentProductName, setCurrentProductName] = useState(() => localStorage.getItem('productName') || '');
             const [stdLength, setStdLength] = useState(() => localStorage.getItem('stdLength') || '');
             const [overlap, setOverlap] = useState(() => localStorage.getItem('overlap') || '');
@@ -221,6 +322,10 @@
             const [allocNo, setAllocNo] = useState(() => localStorage.getItem('allocNo') || '');
             const [allocSource, setAllocSource] = useState(() => localStorage.getItem('allocSource') || null);
             const [allocHistory, setAllocHistory] = useState(() => getStored('waritsuke_history', []));
+            
+            const [allocCalcInput, setAllocCalcInput] = useState('');
+            const [allocCumulativeSum, setAllocCumulativeSum] = useState(() => toNum(localStorage.getItem('allocCumulativeSum') || 0));
+            const [allocSumHistory, setAllocSumHistory] = useState(() => getStored('allocSumHistory', []));
 
             const [kanaPitch, setKanaPitch] = useState(() => localStorage.getItem('kanaPitch') || '');
             const [kanaCount, setKanaCount] = useState(() => localStorage.getItem('kanaCount') || '');
@@ -239,7 +344,11 @@
             const [isClearModalOpen, setIsClearModalOpen] = useState(false);
             const [calcInput, setCalcInput] = useState('');
 
-            // --- 計算ロジック ---
+            // --- 画像拡大用のState ---
+            const [zoomedImage, setZoomedImage] = useState(null); // 'tightframe', 'slope', または null
+            const [slopeImageUrl, setSlopeImageUrl] = useState('');
+
+            // --- 計算ロジック (useMemo) ---
             const materialResult = useMemo(() => {
                 const total = toNum(totalDim), std = toNum(stdLength), over = toNum(overlap), effective = std - over;
                 if (total > 0 && effective > 0) {
@@ -304,7 +413,7 @@
 
             const slopeResults = useMemo(() => {
                 const a = toNum(slopeL1), c = toNum(slopeL2), b = toNum(slopeW), interval = toNum(slopePitch);
-                if (b <= 0 || interval <= 0) return { newB: '-', newC: '-', count: '-', step: '-', table: [] };
+                if (b <= 0 || interval <= 0) return { a, b, c, interval, newB: '-', newC: '-', count: '-', step: '-', table: [] };
                 const count = Math.ceil(b / interval), newB = count * interval;
                 const slope = (c - a) / b, newC = a + (slope * newB), step = slope * interval;
                 const table = [];
@@ -343,9 +452,10 @@
             const allocInputColorClass = allocSource === 'pitch' ? 'text-[#0a84ff]' : (allocSource === 'count' ? 'text-[#30d158]' : 'text-white');
 
             // --- 関数定義 ---
-            const handleFocus = (e) => e.target.select();
-            const handleEnterKey = (e, nextRef) => { if (e.key === 'Enter') { e.preventDefault(); nextRef.current?.focus(); } };
             const clearDistance = () => setTotalDim('');
+            const clearAllocInputs = () => { setAllocL(''); setAllocPitch(''); setAllocCount(''); setAllocW(''); setAllocNo(''); setAllocSource(null); };
+            const clearKanamonoInputs = () => { setKanaPitch(''); setKanaCount(''); setKanaLength(''); };
+            const clearSlopeInputs = () => { setSlopeL1(''); setSlopeL2(''); setSlopeW(''); setSlopePitch(''); };
 
             const undoTotal = () => {
                 if (totalHistory.length === 0) return;
@@ -365,6 +475,26 @@
                     setCalcInput(''); setTimeout(() => calcInputRef.current?.focus(), 50);
                 }
             };
+            
+            const addAllocValue = () => {
+                const val = toNum(allocCalcInput);
+                if (val > 0) {
+                    setAllocSumHistory([...allocSumHistory, { sum: allocCumulativeSum, total: allocW }]);
+                    setAllocCumulativeSum(prev => prev + val);
+                    setAllocW(prev => (toNum(prev) + val).toString());
+                    setAllocCalcInput(''); setTimeout(() => allocCalcInputRef.current?.focus(), 50);
+                }
+            };
+            const undoAllocTotal = () => {
+                if (allocSumHistory.length === 0) return;
+                const nextH = [...allocSumHistory]; const last = nextH.pop();
+                setAllocCumulativeSum(last.sum); setAllocW(last.total); setAllocSumHistory(nextH);
+            };
+            const resetAllocTotal = () => {
+                setAllocSumHistory([...allocSumHistory, { sum: allocCumulativeSum, total: allocW }]);
+                setAllocCumulativeSum(0); setAllocW('');
+            };
+
             const saveToHistoryManually = () => {
                 if (toNum(totalDim) === 0) return;
                 const pieces = materialResult.pieces;
@@ -383,15 +513,23 @@
             };
             const saveHistoryTotal = () => {
                 if (history.length === 0) return;
-                const pieces = history.reduce((acc, cur) => acc + (cur.pieces || 0), 0);
+                const totalPieces = history.reduce((acc, cur) => acc + (cur.pieces || 0), 0);
                 const dist = history.reduce((acc, cur) => acc + toNum(cur.total), 0);
-                const newT = [{id: Date.now().toString(), name: currentProductName || '無題', pieces, totalDistance: dist, createdAt: Date.now()}, ...savedTallies];
+                const newT = [{id: Date.now().toString(), name: currentProductName || '無題', pieces: totalPieces, totalDistance: dist, createdAt: Date.now()}, ...savedTallies];
                 setSavedTallies(newT); setCurrentProductName('');
             };
 
-            const clearAllocInputs = () => { setAllocL(''); setAllocPitch(''); setAllocCount(''); setAllocW(''); setAllocNo(''); setAllocSource(null); };
-            const clearKanamonoInputs = () => { setKanaPitch(''); setKanaCount(''); setKanaLength(''); };
-            const clearSlopeInputs = () => { setSlopeL1(''); setSlopeL2(''); setSlopeW(''); setSlopePitch(''); };
+            const deleteHistoryItem = (id) => { setHistory(history.filter(item => item.id !== id)); };
+            const deleteTallyItem = (id) => { setSavedTallies(savedTallies.filter(t => t.id !== id)); };
+            const updateTallyName = (id, name) => { setSavedTallies(savedTallies.map(t => t.id === id ? { ...t, name } : t)); };
+
+            // --- 拡大表示のハンドラ ---
+            const openSlopeZoom = () => {
+                if (slopeCanvasRef.current) {
+                    setSlopeImageUrl(slopeCanvasRef.current.toDataURL('image/png'));
+                    setZoomedImage('slope');
+                }
+            };
 
             const drawSlopeCanvas = () => {
                 const canvas = slopeCanvasRef.current; if (!canvas) return;
@@ -422,15 +560,43 @@
                 ctx.fillText(`幅: ${Math.round(newB).toLocaleString()}`, tx(newB / 2), canvas.height - padding.b + 65);
             };
 
-            // --- スワイプジェスチャー ---
+            // --- Effects ---
+            useEffect(() => {
+                localStorage.setItem('activeApp', activeApp);
+                localStorage.setItem('productName', currentProductName);
+                localStorage.setItem('stdLength', stdLength);
+                localStorage.setItem('overlap', overlap);
+                localStorage.setItem('totalDim', totalDim);
+                localStorage.setItem('cumulativeSum', cumulativeSum.toString());
+                localStorage.setItem('totalHistory', JSON.stringify(totalHistory));
+                localStorage.setItem('allocL', allocL);
+                localStorage.setItem('allocPitch', allocPitch);
+                localStorage.setItem('allocCount', allocCount);
+                localStorage.setItem('allocW', allocW);
+                localStorage.setItem('allocNo', allocNo);
+                localStorage.setItem('allocCumulativeSum', allocCumulativeSum.toString());
+                localStorage.setItem('allocSumHistory', JSON.stringify(allocSumHistory));
+                if(allocSource) localStorage.setItem('allocSource', allocSource);
+                localStorage.setItem('kanaPitch', kanaPitch);
+                localStorage.setItem('kanaCount', kanaCount);
+                localStorage.setItem('kanaLength', kanaLength);
+                localStorage.setItem('slopeL1', slopeL1);
+                localStorage.setItem('slopeL2', slopeL2);
+                localStorage.setItem('slopeW', slopeW);
+                localStorage.setItem('slopePitch', slopePitch);
+                localStorage.setItem('tfSize', tfSize);
+                localStorage.setItem('tfTotalL', tfTotalL);
+                localStorage.setItem('gradient_calc_history', JSON.stringify(history));
+                localStorage.setItem('gradient_calc_savedTallies', JSON.stringify(savedTallies));
+                localStorage.setItem('waritsuke_history', JSON.stringify(allocHistory));
+            }, [activeApp, currentProductName, stdLength, overlap, totalDim, cumulativeSum, totalHistory, allocL, allocPitch, allocCount, allocW, allocNo, allocSource, kanaPitch, kanaCount, kanaLength, slopeL1, slopeL2, slopeW, slopePitch, tfSize, tfTotalL, history, savedTallies, allocHistory, allocCumulativeSum, allocSumHistory]);
+
+            useEffect(() => { if (activeApp === 'slope') drawSlopeCanvas(); }, [activeApp, slopeResults]);
+
             const touchStartX = useRef(0);
             const touchStartY = useRef(0);
-            
             useEffect(() => {
-                const handleStart = (e) => { 
-                    touchStartX.current = e.touches[0].clientX; 
-                    touchStartY.current = e.touches[0].clientY; 
-                };
+                const handleStart = (e) => { touchStartX.current = e.touches[0].clientX; touchStartY.current = e.touches[0].clientY; };
                 const handleEnd = (e) => {
                     if (['INPUT', 'BUTTON', 'SELECT', 'CANVAS'].includes(e.target.tagName)) return;
                     const deltaX = touchStartX.current - e.changedTouches[0].clientX;
@@ -443,13 +609,8 @@
                 };
                 window.addEventListener('touchstart', handleStart, {passive: true});
                 window.addEventListener('touchend', handleEnd);
-                return () => {
-                    window.removeEventListener('touchstart', handleStart);
-                    window.removeEventListener('touchend', handleEnd);
-                };
+                return () => { window.removeEventListener('touchstart', handleStart); window.removeEventListener('touchend', handleEnd); };
             }, [activeApp]);
-
-            useEffect(() => { if (activeApp === 'slope') { const timer = setTimeout(drawSlopeCanvas, 50); return () => clearTimeout(timer); } }, [activeApp, slopeResults]);
 
             return (
                 <div ref={mainRef} className="flex flex-col bg-black h-full overflow-hidden">
@@ -471,7 +632,7 @@
                         <div className="max-w-7xl mx-auto h-full overflow-hidden">
                             <div className="animate-fade-in h-full overflow-hidden">
                                 {activeApp === 'calc' && (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full overflow-hidden">
                                         <div className="space-y-6 pr-1 md:overflow-y-auto scrollbar-hide pb-10">
                                             <section className="bg-zinc-900 p-4 rounded-2xl border border-zinc-800 space-y-4 shadow-xl">
                                                 <div className="yakumono-box-layout"><span className="yakumono-label-gray">品名</span><input ref={productNameRef} type="text" value={currentProductName} onFocus={handleFocus} onChange={(e) => setCurrentProductName(e.target.value)} onKeyDown={(e) => handleEnterKey(e, stdLengthRef)} className="yakumono-input-text" placeholder="例：水切り..." /></div>
@@ -490,7 +651,7 @@
                                                 <div className="yakumono-box-layout relative focus-within:border-orange-500"><span className="yakumono-label-gray">距離</span><input ref={totalDimRef} type="text" inputMode="decimal" value={format(totalDim)} onFocus={handleFocus} onChange={(e) => setTotalDim(unformat(e.target.value))} onKeyDown={(e) => handleEnterKey(e, calcInputRef)} className="yakumono-input-text pr-8" placeholder="取付け距離" /><button onClick={clearDistance} className="absolute right-2 top-0 bottom-0 flex items-center justify-center text-zinc-500 hover:text-zinc-300"><Icon name="x" size={20} /></button></div>
                                             </section>
                                             <section className="bg-zinc-900 p-4 rounded-2xl border border-zinc-800 space-y-3 shadow-xl">
-                                                <div className="flex gap-2 items-stretch h-12"><input ref={calcInputRef} type="text" inputMode="decimal" value={format(calcInput)} onFocus={handleFocus} onChange={(e) => setCalcInput(unformat(e.target.value))} onKeyDown={(e) => e.key === 'Enter' && addValue()} className="flex-1 bg-zinc-950 border border-zinc-500 rounded-2xl text-[20px] text-white text-center font-bold outline-none focus:border-[#f97316] transition-all leading-[3rem]" placeholder="加算" /><button onClick={addValue} className="w-14 shrink-0 rounded-xl flex items-center justify-center shadow-lg btn-3d btn-3d-silver"><Icon name="plus" size={24} /></button></div>
+                                                <div className="flex gap-2 items-stretch h-12"><input ref={calcInputRef} type="text" inputMode="decimal" value={format(calcInput)} onFocus={handleFocus} onChange={(e) => setCalcInput(unformat(e.target.value))} onKeyDown={(e) => e.key === 'Enter' && addValue()} className="flex-1 bg-zinc-950 border border-zinc-500 rounded-2xl text-[20px] text-white text-center font-bold outline-none focus:border-[#f97316] transition-all leading-[3rem]" placeholder="＋全幅の加算" /><button onClick={addValue} className="w-14 shrink-0 rounded-xl flex items-center justify-center shadow-lg btn-3d btn-3d-silver"><Icon name="plus" size={24} /></button></div>
                                                 <div className="flex justify-between items-center px-2"><span className="text-[14px] font-bold text-zinc-400 uppercase tracking-widest">加算合計</span><div className="flex items-center gap-3"><span className="text-xl font-mono font-bold text-white">{format(cumulativeSum)} ㎜</span><button onClick={undoTotal} disabled={totalHistory.length === 0} className={`w-8 h-8 rounded-lg btn-3d ${totalHistory.length === 0 ? 'opacity-30' : 'btn-3d-zinc text-zinc-400'}`}><Icon name="undo" size={18} /></button><button onClick={resetTotal} className="w-8 h-8 rounded-lg btn-3d btn-3d-zinc text-zinc-400 active:text-red-400"><Icon name="rotate" size={18} /></button></div></div>
                                             </section>
                                             <button onClick={saveToHistoryManually} className="w-full h-[3rem] btn-3d btn-3d-orange text-white font-bold text-[17px]">履歴に保存</button>
@@ -513,45 +674,39 @@
                                 )}
 
                                 {activeApp === 'alloc' && (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full overflow-hidden">
                                         <div className="space-y-6 pr-1 md:overflow-y-auto scrollbar-hide pb-10">
                                             <div className="ios-card-base p-5 space-y-4 shadow-2xl">
-                                                <div className="flex gap-2"><div className="unified-input-row focus-orange flex-1"><span className="unified-label-left">寸法</span><input ref={allocLRef} type="text" inputMode="decimal" value={format(allocL)} onFocus={handleFocus} onChange={(e) => setAllocL(unformat(e.target.value))} onKeyDown={(e) => handleEnterKey(e, allocWRef)} className="unified-input-center text-[#ff9f0a]" placeholder="L寸法" /></div><button onClick={clearAllocInputs} className="w-20 h-[3rem] btn-3d btn-3d-zinc text-white text-[14px] font-bold shrink-0">クリア</button></div>
+                                                <div className="flex gap-2"><div className="unified-input-row focus-orange flex-1"><span className="unified-label-left">材料寸法</span><input ref={allocLRef} type="text" inputMode="decimal" value={format(allocL)} onFocus={handleFocus} onChange={(e) => setAllocL(unformat(e.target.value))} onKeyDown={(e) => handleEnterKey(e, allocWRef)} className="unified-input-center text-[#ff9f0a]" placeholder="L寸法" /></div><button onClick={clearAllocInputs} className="w-20 h-[3rem] btn-3d btn-3d-zinc text-white text-[14px] font-bold shrink-0">クリア</button></div>
                                                 <div className="grid grid-cols-2 gap-4">
                                                     <div className="unified-input-row focus-blue"><span className="unified-label-left text-[#0a84ff]">働き</span><input ref={allocPitchRef} type="text" inputMode="decimal" value={allocSource === 'count' ? allocCalculated.countMode.w : format(allocPitch)} onFocus={handleFocus} onChange={(e) => { setAllocPitch(unformat(e.target.value)); setAllocSource('pitch'); }} onKeyDown={(e) => handleEnterKey(e, allocWRef)} className={`unified-input-center ${allocInputColorClass}`} placeholder="ピッチ" /></div>
                                                     <div className="unified-input-row focus-green"><span className="unified-label-left text-[#30d158]">数量</span><input ref={allocCountRef} type="text" inputMode="numeric" value={allocSource === 'pitch' ? allocCalculated.pitchMode.q : format(allocCount)} onFocus={handleFocus} onChange={(e) => { setAllocCount(unformat(e.target.value)); setAllocSource('count'); }} onKeyDown={(e) => handleEnterKey(e, allocWRef)} className={`unified-input-center ${allocInputColorClass}`} placeholder="数量" /></div>
                                                 </div>
-                                                <div className="flex gap-2"><div className="unified-input-row focus-orange flex-1"><span className="unified-label-left w-auto pr-2 whitespace-nowrap">全幅</span><input ref={allocWRef} type="text" inputMode="decimal" value={format(allocW)} onFocus={handleFocus} onChange={(e) => setAllocW(unformat(e.target.value))} onKeyDown={(e) => handleEnterKey(e, allocNoRef)} className="unified-input-center text-white" placeholder="入力" /></div><div className="unified-input-row focus-orange w-28 px-3"><span className="unified-label-left w-auto pr-2 whitespace-nowrap">番号</span><input ref={allocNoRef} type="text" value={allocNo} onFocus={handleFocus} onChange={(e) => setAllocNo(e.target.value)} className="unified-input-center text-white" placeholder="No." /></div></div>
+                                                <div className="grid grid-cols-3 gap-2"><div className="unified-input-row focus-orange col-span-2"><span className="unified-label-left w-auto pr-2 whitespace-nowrap">全幅</span><input ref={allocWRef} type="text" inputMode="decimal" value={format(allocW)} onFocus={handleFocus} onChange={(e) => setAllocW(unformat(e.target.value))} onKeyDown={(e) => handleEnterKey(e, allocNoRef)} className="unified-input-center text-white" placeholder="入力" /></div><div className="unified-input-row focus-orange col-span-1 px-3"><input ref={allocNoRef} type="text" value={allocNo} onFocus={handleFocus} onChange={(e) => setAllocNo(e.target.value)} className="unified-input-center text-white text-[16px]" placeholder="備考" /></div></div>
                                             </div>
+
+                                            <section className="bg-zinc-900 p-4 rounded-2xl border border-zinc-800 space-y-3 shadow-xl">
+                                                <div className="flex gap-2 items-stretch h-12"><input ref={allocCalcInputRef} type="text" inputMode="decimal" value={format(allocCalcInput)} onFocus={handleFocus} onChange={(e) => setAllocCalcInput(unformat(e.target.value))} onKeyDown={(e) => e.key === 'Enter' && addAllocValue()} className="flex-1 bg-zinc-950 border border-zinc-500 rounded-2xl text-[20px] text-white text-center font-bold outline-none focus:border-[#f97316] transition-all leading-[3rem]" placeholder="＋全幅の加算" /><button onClick={addAllocValue} className="w-14 shrink-0 rounded-xl flex items-center justify-center shadow-lg btn-3d btn-3d-silver"><Icon name="plus" size={24} /></button></div>
+                                                <div className="flex justify-between items-center px-2"><span className="text-[14px] font-bold text-zinc-400 uppercase tracking-widest">加算合計</span><div className="flex items-center gap-3"><span className="text-xl font-mono font-bold text-white">{format(allocCumulativeSum)} ㎜</span><button onClick={undoAllocTotal} disabled={allocSumHistory.length === 0} className={`w-8 h-8 rounded-lg btn-3d ${allocSumHistory.length === 0 ? 'opacity-30' : 'btn-3d-zinc text-zinc-400'}`}><Icon name="undo" size={18} /></button><button onClick={resetAllocTotal} className="w-8 h-8 rounded-lg btn-3d btn-3d-zinc text-zinc-400 active:text-red-400"><Icon name="rotate" size={18} /></button></div></div>
+                                            </section>
+
                                             <button onClick={saveAllocHistory} className="w-full h-[3rem] btn-3d btn-3d-orange text-white font-bold text-[17px]">履歴に保存</button>
                                             <div className="space-y-4">
                                                 <h3 className="text-[18px] font-bold text-zinc-300 uppercase ml-1">計算結果</h3>
-                                                <div className="result-card-ios p-3 shadow-lg" style={{borderLeft: '6px solid #0a84ff', background: '#1c1c1e', borderRadius: '12px'}}><div className="text-[14px] text-zinc-400 font-bold uppercase mb-1">働き基準 結果</div><div className="grid grid-cols-2 gap-4 border-t border-zinc-700 pt-2"><div><div className="text-[14px] text-blue-500 font-bold uppercase">必要数量</div><div className="flex items-baseline gap-1 text-blue-500"><span className="text-3xl font-bold">{allocCalculated.pitchMode.q}</span><span className="text-[14px] font-bold uppercase">枚</span></div></div><div><div className="text-[14px] text-gray-500 font-bold uppercase">残材余り</div><div className="flex items-baseline gap-1 text-gray-300"><span className="text-3xl font-bold">{allocCalculated.pitchMode.qRem}</span><span className="text-[12px] font-bold uppercase">㎜</span></div></div></div></div>
-                                                <div className={`result-card-ios p-3 shadow-lg`} style={{borderLeft: '6px solid #30d158', background: '#1c1c1e', borderRadius: '12px'}}><div className="text-[14px] text-zinc-400 font-bold uppercase mb-1">数量基準 結果</div><div className="grid grid-cols-2 gap-4 border-t border-zinc-700 pt-2"><div><div className="text-[14px] text-green-500 font-bold uppercase">必要働き</div><div className="flex items-baseline gap-1 text-green-500"><span className="text-3xl font-bold">{allocCalculated.countMode.w}</span><span className="text-[14px] font-bold uppercase">㎜</span></div></div><div><div className="text-[14px] text-gray-500 font-bold uppercase">残材余り</div><div className="flex items-baseline gap-1 text-gray-300"><span className="text-3xl font-bold">{allocCalculated.countMode.wRem}</span><span className="text-[12px] font-bold uppercase">㎜</span></div></div></div></div>
+                                                <div className="result-card-ios p-3 shadow-lg" style={{borderLeft: '6px solid #0a84ff', background: '#1c1c1e', borderRadius: '12px'}}><div className="text-[14px] text-zinc-400 font-bold uppercase mb-1">働き基準 結果</div><div className="grid grid-cols-2 gap-4 border-t border-zinc-700 pt-2"><div><div className="text-[14px] text-blue-500 font-bold uppercase">必要数量</div><div className="flex items-baseline gap-1 text-blue-500"><span className="text-3xl font-bold">{allocCalculated.pitchMode.q}</span><span className="text-[14px] font-bold uppercase">枚</span></div></div><div><div className="text-[14px] text-gray-500 font-bold uppercase">残材余り</div><div className="flex items-baseline gap-1 text-gray-300"><span className="text-3xl font-bold">{allocCalculated.pitchMode.qRem}</span><span className="text-[14px] font-bold uppercase">㎜</span></div></div></div></div>
+                                                <div className={`result-card-ios p-3 shadow-lg`} style={{borderLeft: '6px solid #30d158', background: '#1c1c1e', borderRadius: '12px'}}><div className="text-[14px] text-zinc-400 font-bold uppercase mb-1">数量基準 結果</div><div className="grid grid-cols-2 gap-4 border-t border-zinc-700 pt-2"><div><div className="text-[14px] text-green-500 font-bold uppercase">必要働き</div><div className="flex items-baseline gap-1 text-green-500"><span className="text-3xl font-bold">{allocCalculated.countMode.w}</span><span className="text-[14px] font-bold uppercase">㎜</span></div></div><div><div className="text-[14px] text-gray-500 font-bold uppercase">残材余り</div><div className="flex items-baseline gap-1 text-gray-300"><span className="text-3xl font-bold">{allocCalculated.countMode.wRem}</span><span className="text-[14px] font-bold uppercase">㎜</span></div></div></div></div>
                                             </div>
                                         </div>
                                         <div className="space-y-4 pl-1 md:overflow-y-auto scrollbar-hide pb-10">
                                             <div className="flex justify-between items-center px-1"><h3 className="text-[18px] font-bold text-zinc-300 uppercase">割付履歴</h3><button onClick={() => { setAllocHistory([]); }} className="h-8 px-4 rounded-xl btn-3d btn-3d-red text-white text-[14px]">履歴消去</button></div>
                                             <div className="bg-[#1c1c1e] rounded-xl border border-zinc-800 overflow-hidden shadow-2xl">
                                                 <table className="history-table">
-                                                    <thead>
-                                                        <tr className="bg-[#2c2c2e] sticky top-0 z-10">
-                                                            <th className="text-[#0a84ff] border-r border-[#545458] font-bold uppercase">働き基準</th>
-                                                            <th className="text-[#30d158] border-r border-[#545458] font-bold uppercase">数量基準</th>
-                                                            <th className="w-[10%]"></th>
-                                                        </tr>
-                                                    </thead>
+                                                    <thead><tr className="bg-[#2c2c2e] sticky top-0 z-10"><th className="text-[#0a84ff] border-r border-[#545458] font-bold uppercase">働き基準</th><th className="text-[#30d158] border-r border-[#545458] font-bold uppercase">数量基準</th><th className="w-[10%]"></th></tr></thead>
                                                     <tbody className="text-lg">
                                                         {allocHistory.length > 0 && (
                                                             <tr className="bg-[#3a3a3c] border-b-2 border-[#545458] font-bold shadow-inner">
-                                                                <td className="border-r border-[#545458] text-[#0a84ff] py-1 px-1 text-center">
-                                                                    <div className="text-lg">合計: {allocTotals.pitchQ}枚</div>
-                                                                    <div className="text-[14px] text-zinc-300 font-bold">全幅: {format(allocTotals.pitchW)}㎜</div>
-                                                                </td>
-                                                                <td className="border-r border-[#545458] text-[#30d158] py-1 px-1 text-center">
-                                                                    <div className="text-lg">合計: {allocTotals.countQ}枚</div>
-                                                                    <div className="text-[14px] text-zinc-300 font-bold">全幅: {format(allocTotals.countW)}㎜</div>
-                                                                </td>
+                                                                <td className="border-r border-[#545458] text-[#0a84ff] py-1 px-1 text-center"><div>合計: {allocTotals.pitchQ}枚</div><div className="text-[14px] text-zinc-300 font-bold">全幅: {format(allocTotals.pitchW)}㎜</div></td>
+                                                                <td className="border-r border-[#545458] text-[#30d158] py-1 px-1 text-center"><div>合計: {allocTotals.countQ}枚</div><div className="text-[14px] text-zinc-300 font-bold">全幅: {format(allocTotals.countW)}㎜</div></td>
                                                                 <td></td>
                                                             </tr>
                                                         )}
@@ -562,13 +717,7 @@
                                                                         <div className="text-zinc-500 text-[14px] font-bold uppercase leading-tight">W:{format(item.L)}㎜</div>
                                                                         <div className="text-[#0a84ff] font-bold leading-tight text-lg">{item.q}枚</div>
                                                                         <div className="text-[14px] text-zinc-400 font-bold leading-tight">@{item.pitch}</div>
-                                                                        {(item.no || item.memoL) && (
-                                                                            <div className="text-[15px] text-[#f97316] border-t border-zinc-800 mt-1 pt-0.5 font-bold">
-                                                                                {item.no && <span>{item.no}</span>}
-                                                                                {item.no && item.memoL && <span className="mx-1">/</span>}
-                                                                                {item.memoL && <span>{item.memoL}</span>}
-                                                                            </div>
-                                                                        )}
+                                                                        {(item.no || item.memoL) && (<div className="text-[15px] text-[#f97316] border-t border-zinc-800 mt-1 pt-0.5 font-bold">{item.no && <span>{item.no}</span>}{item.no && item.memoL && <span className="mx-1">/</span>}{item.memoL && <span>{item.memoL}</span>}</div>)}
                                                                     </div> : '-'}
                                                                 </td>
                                                                 <td className="border-r border-[#545458] text-center py-2 px-2">
@@ -576,18 +725,10 @@
                                                                         <div className="text-zinc-500 text-[14px] font-bold uppercase leading-tight">W:{format(item.L)}㎜</div>
                                                                         <div className="text-[#30d158] font-bold leading-tight text-lg">{item.q}枚</div>
                                                                         <div className="text-[14px] text-zinc-400 font-bold leading-tight">@{item.count}</div>
-                                                                        {(item.no || item.memoL) && (
-                                                                            <div className="text-[15px] text-[#f97316] border-t border-zinc-800 mt-1 pt-0.5 font-bold">
-                                                                                {item.no && <span>{item.no}</span>}
-                                                                                {item.no && item.memoL && <span className="mx-1">/</span>}
-                                                                                {item.memoL && <span>{item.memoL}</span>}
-                                                                            </div>
-                                                                        )}
+                                                                        {(item.no || item.memoL) && (<div className="text-[15px] text-[#f97316] border-t border-zinc-800 mt-1 pt-0.5 font-bold">{item.no && <span>{item.no}</span>}{item.no && item.memoL && <span className="mx-1">/</span>}{item.memoL && <span>{item.memoL}</span>}</div>)}
                                                                     </div> : '-'}
                                                                 </td>
-                                                                <td className="text-center">
-                                                                    <button onClick={() => setAllocHistory(allocHistory.filter(i => i.id !== item.id))} className="text-zinc-600 hover:text-red-500 transition-all flex justify-center w-full"><Icon name="trash" size={20} /></button>
-                                                                </td>
+                                                                <td className="text-center"><button onClick={() => setAllocHistory(allocHistory.filter(i => i.id !== item.id))} className="text-zinc-600 hover:text-red-500 transition-all flex justify-center w-full"><Icon name="trash" size={20} /></button></td>
                                                             </tr>
                                                         ))}
                                                     </tbody>
@@ -598,16 +739,32 @@
                                 )}
 
                                 {activeApp === 'tightframe' && (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full overflow-hidden">
                                         <div className="space-y-6 pr-1 md:overflow-y-auto scrollbar-hide pb-10">
                                             <div className="ios-card-base p-4 space-y-3 shadow-2xl">
                                                 <div className="grid grid-cols-2 gap-3">
                                                     <div className="unified-input-row focus-orange relative border-[#38383a]"><span className="unified-label-left text-gray-400">サイズ</span><select value={tfSize} onChange={(e) => setTfSize(e.target.value)} className="unified-input-center text-white appearance-none pr-6 bg-transparent outline-none"><option value="600" className="bg-zinc-800">600</option><option value="500" className="bg-zinc-800">500</option><option value="1000" className="bg-zinc-800">1000</option></select><div className="absolute right-2 top-0 bottom-0 flex items-center justify-center text-zinc-500 pointer-events-none"><Icon name="chevron" size={16} /></div></div>
                                                     <div className="unified-input-row border-dashed border-[#38383a] bg-[#000000] pointer-events-none"><span className="unified-label-left text-gray-400 w-auto pr-1 whitespace-nowrap">全長芯</span><input type="text" readOnly value={format(tfResults.centerL)} className="unified-input-center text-gray-400 border-none outline-none" placeholder="-" /></div>
                                                 </div>
-                                                <div className="unified-input-row focus-orange"><span className="unified-label-left text-gray-400 w-auto pr-2 whitespace-nowrap">全長</span><input ref={tfTotalLRef} type="text" inputMode="decimal" value={format(tfTotalL)} onFocus={handleFocus} onChange={(e) => setTfTotalL(unformat(e.target.value))} onKeyDown={(e) => {if(e.key==='Enter') e.target.blur()}} className="unified-input-center text-white" placeholder="数値を入力" /></div>
+                                                
+                                                <div className="flex gap-2">
+                                                    <div className="unified-input-row focus-orange flex-1">
+                                                        <span className="unified-label-left text-gray-400 w-auto pr-2 whitespace-nowrap">全長</span>
+                                                        <input ref={tfTotalLRef} type="text" inputMode="decimal" value={format(tfTotalL)} onFocus={handleFocus} onChange={(e) => setTfTotalL(unformat(e.target.value))} onKeyDown={(e) => {if(e.key==='Enter') e.target.blur()}} className="unified-input-center text-white" placeholder="数値を入力" />
+                                                    </div>
+                                                    <button onClick={() => { setTfTotalL(''); setTfSize('600'); }} className="w-24 h-[3rem] btn-3d btn-3d-zinc text-white font-bold text-[13px] shrink-0">リセット</button>
+                                                </div>
+
                                                 <div className="grid grid-cols-2 gap-3"><div className="flex items-baseline justify-center gap-2 py-2 text-center"><span className="text-[14px] text-gray-500 font-bold uppercase">山寸法</span><span className="text-xl font-bold text-gray-300">{format(tfResults.yamaDim)}</span></div><div className="flex items-baseline justify-center gap-2 py-2 text-center"><span className="text-[14px] text-gray-500 font-bold uppercase">谷寸法</span><span className="text-xl font-bold text-gray-300">{format(tfResults.taniDim)}</span></div></div>
-                                                <button onClick={() => { setTfTotalL(''); setTfSize('600'); }} className="w-full h-10 btn-3d btn-3d-zinc text-white font-bold text-[13px]">リセット</button>
+                                                
+                                                {/* ここで直接SVGコンポーネントを呼び出す（タップで拡大） */}
+                                                <div 
+                                                    className="mt-3 rounded-xl overflow-hidden border border-[#38383a] bg-[#000000] flex justify-center py-4 cursor-pointer active:opacity-70 transition-opacity relative"
+                                                    onClick={() => setZoomedImage('tightframe')}
+                                                >
+                                                    <div className="absolute top-2 right-2 bg-zinc-800/80 px-2 py-1 rounded text-[10px] text-zinc-300 font-bold">拡大</div>
+                                                    <RoofProfileSVG size={tfSize} />
+                                                </div>
                                             </div>
                                             <div className="space-y-4">
                                                 <h3 className="text-[18px] font-bold text-[#ff9f0a] uppercase tracking-widest ml-1">端部 基準寸法</h3>
@@ -619,14 +776,14 @@
                                         </div>
                                         <div className="space-y-4 pl-1 md:overflow-y-auto scrollbar-hide pb-10">
                                             <div className="flex justify-between items-center px-1"><h3 className="text-[18px] font-bold text-zinc-300 uppercase tracking-widest">割付表</h3><div className="bg-[#ff9f0a15] border border-[#ff9f0a44] px-3 py-1 rounded-full text-[#ff9f0a] font-bold text-[14px]">合計: {tfResults.count} 本</div></div>
-                                            <div className="bg-[#1c1c1e] rounded-xl border border-zinc-800 overflow-hidden shadow-2xl animate-fade-in"><div className="bg-zinc-800 p-3 flex justify-between items-center border-b border-zinc-700"><h2 className="text-base font-bold text-white uppercase">割付寸法</h2><span className="bg-[#f97316] px-3 py-1 rounded-full text-black font-bold text-[14px] whitespace-nowrap uppercase font-bold">W {format(tfResults.L)} ㎜</span></div>
+                                            <div className="bg-[#1c1c1e] rounded-xl border border-zinc-800 overflow-hidden shadow-2xl animate-fade-in"><div className="bg-zinc-800 p-3 flex justify-between items-center border-b border-zinc-700"><h2 className="text-[14px] font-bold text-white uppercase">割付寸法</h2><span className="bg-[#f97316] px-3 py-1 rounded-full text-black font-bold text-[14px] whitespace-nowrap uppercase font-bold">W {format(tfResults.L)} ㎜</span></div>
                                             <div className="w-full"><table className="history-table w-full"><thead className="sticky top-0 bg-[#1c1c1e] z-10"><tr className="bg-[#2c2c2e]"><th className="text-[#0a84ff] border-r border-[#545458] w-1/2 font-bold uppercase py-2">谷芯</th><th className="text-[#30d158] font-bold w-1/2 uppercase py-2">山芯</th></tr></thead><tbody className="text-center font-bold text-lg">{tfResults.table.length === 0 ? <tr><td colSpan="2" className="py-20 text-zinc-600 italic font-bold text-[14px]">全長を入力してください</td></tr> : tfResults.table.map((row, idx) => (<tr key={idx} className="border-b border-[#545458]"><td className="py-3 border-r border-[#545458] text-[#0a84ff] font-bold text-[20px]">{row.tani !== null ? format(row.tani) : '-'}</td><td className="py-3 text-[#30d158] font-bold text-[20px]">{row.yama !== null ? format(row.yama) : '-'}</td></tr>))}</tbody></table></div></div>
                                         </div>
                                     </div>
                                 )}
 
                                 {activeApp === 'kanamono' && (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full overflow-hidden">
                                         <div className="space-y-6 pr-1 md:overflow-y-auto scrollbar-hide pb-10">
                                             <div className="bg-zinc-900 p-5 rounded-2xl border border-zinc-800 space-y-4 shadow-xl">
                                                 <div className="grid grid-cols-2 gap-4"><div className="unified-input-row focus-blue"><span className="unified-label-left text-[#0a84ff]">働き</span><input ref={kanamonoPitchRef} type="text" inputMode="decimal" value={format(kanaPitch)} onFocus={handleFocus} onChange={(e) => setKanaPitch(unformat(e.target.value))} onKeyDown={(e) => handleEnterKey(e, kanamonoLengthRef)} className="unified-input-center text-[#0a84ff]" placeholder="ピッチ" /></div><div className="unified-input-row focus-green"><span className="unified-label-left text-[#30d158]">本数</span><input ref={kanamonoCountRef} type="text" inputMode="numeric" value={format(kanaCount)} onFocus={handleFocus} onChange={(e) => setKanaCount(unformat(e.target.value))} onKeyDown={(e) => handleEnterKey(e, kanamonoLengthRef)} className="unified-input-center text-[#30d158]" placeholder="本数" /></div></div>
@@ -647,26 +804,10 @@
                                                     <tbody className="text-center font-bold text-lg">
                                                         {kanamonoTableData.length === 0 ? <tr><td colSpan="2" className="py-20 text-zinc-600 italic font-bold text-[14px]">データなし</td></tr> : (
                                                             <>
-                                                                {kanamonoTableData.map((row, idx) => (
-                                                                    <tr key={idx} className="border-b border-[#545458]"><td className="py-2 border-r border-[#545458] text-[#0a84ff]">{row.q !== undefined ? format(row.q) : '-'}</td><td className="py-2 text-[#30d158]">{row.n !== undefined ? format(row.n) : '-'}</td></tr>
-                                                                ))}
-                                                                <tr className="bg-[#2c2c2e] font-bold border-t-2 border-[#545458]">
-                                                                    <td className="py-2 border-r border-[#545458]">
-                                                                        {kanamonoResults.resQ.val !== '-' && (
-                                                                            <div className="flex flex-col gap-0.5 text-zinc-400">
-                                                                                <div className="text-[14px]">余り: {format(kanamonoLastRem.qRem)}㎜</div>
-                                                                                <div className="text-[16px]">計: {kanamonoResults.resQ.val}本</div>
-                                                                            </div>
-                                                                        )}
-                                                                    </td>
-                                                                    <td className="py-2">
-                                                                        {kanamonoResults.resW.val !== '-' && (
-                                                                            <div className="flex flex-col gap-0.5 text-zinc-400">
-                                                                                <div className="text-[14px]">余り: {format(kanamonoLastRem.nRem)}㎜</div>
-                                                                                <div className="text-[16px]">計: {format(kanaCount)}本</div>
-                                                                            </div>
-                                                                        )}
-                                                                    </td>
+                                                                {kanamonoTableData.map((row, idx) => (<tr key={idx} className="border-b border-[#545458]"><td className="py-2 border-r border-[#545458] text-[#0a84ff]">{row.q !== undefined ? format(row.q) : '-'}</td><td className="py-2 text-[#30d158]">{row.n !== undefined ? format(row.n) : '-'}</td></tr>))}
+                                                                <tr className="bg-[#2c2c2e] font-bold border-t-2 border-[#545458] text-zinc-400">
+                                                                    <td className="py-2 border-r border-[#545458]">{kanamonoResults.resQ.val !== '-' && (<div className="flex flex-col gap-0.5"><div className="text-[14px]">余り: {format(kanamonoLastRem.qRem)}㎜</div><div className="text-[16px]">計: {kanamonoResults.resQ.val}本</div></div>)}</td>
+                                                                    <td className="py-2">{kanamonoResults.resW.val !== '-' && (<div className="flex flex-col gap-0.5"><div className="text-[14px]">余り: {format(kanamonoLastRem.nRem)}㎜</div><div className="text-[16px]">計: {format(kanaCount)}本</div></div>)}</td>
                                                                 </tr>
                                                             </>
                                                         )}
@@ -678,7 +819,7 @@
                                 )}
 
                                 {activeApp === 'slope' && (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full overflow-hidden">
                                         <div className="space-y-6 pr-1 md:overflow-y-auto scrollbar-hide pb-10">
                                             <div className="ios-card-base p-5 space-y-4 shadow-2xl">
                                                 <div className="grid grid-cols-2 gap-4">
@@ -695,11 +836,18 @@
                                                 <div className="bg-[#0a84ff15] border border-[#0a84ff44] p-3 rounded-xl text-center"><span className="block text-[12px] text-[#0a84ff] font-bold uppercase mb-1">延長後W</span><span className="text-xl font-bold text-[#0a84ff]">{format(slopeResults.newB)}</span><span className="text-[14px] ml-1 text-gray-500 uppercase">㎜</span></div>
                                                 <div className="bg-[#30d15815] border border-[#30d15844] p-3 rounded-xl text-center"><span className="block text-[12px] text-[#30d158] font-bold uppercase mb-1">延長後L2</span><span className="text-xl font-bold text-[#30d158]">{format(slopeResults.newC)}</span><span className="text-[12px] ml-1 text-gray-500 uppercase">㎜</span></div>
                                                 <div className="bg-[#ff9f0a15] border border-[#ff9f0a44] p-3 rounded-xl text-center"><span className="block text-[14px] text-[#ff9f0a] font-bold uppercase mb-1">区間数</span><span className="text-xl font-bold text-[#ff9f0a]">{slopeResults.count}</span><span className="text-[14px] ml-1 text-gray-500 uppercase">枚</span></div>
-                                                <div className="bg-[#bf5af215] border border-[#bf5af244] p-3 rounded-xl text-center"><span className="block text-[14px] text-[#bf5af2] font-bold uppercase mb-1">増分/区間</span><span className="text-xl font-bold text-[#bf5af2]">{format(slopeResults.step)}</span><span className="text-[12px] ml-1 text-gray-500 uppercase">㎜</span></div>
+                                                <div className="bg-[#bf5af215] border border-[#bf5af244] p-3 rounded-xl text-center"><span className="block text-[14px] text-[#bf5af2] font-bold uppercase mb-1">増分/区間</span><span className="text-xl font-bold text-[#bf5af2]">{format(slopeResults.step)}</span><span className="text-[14px] ml-1 text-gray-500 uppercase">㎜</span></div>
                                             </div>
                                         </div>
                                         <div className="space-y-4 pl-1 md:overflow-y-auto scrollbar-hide pb-10">
-                                            <div className="canvas-container shadow-2xl bg-black aspect-video"><canvas ref={slopeCanvasRef} width="1200" height="700"></canvas></div>
+                                            {/* キャンバスをタップで拡大 */}
+                                            <div 
+                                                className="canvas-container shadow-2xl bg-black aspect-video cursor-pointer active:opacity-70 transition-opacity relative"
+                                                onClick={openSlopeZoom}
+                                            >
+                                                <div className="absolute top-2 right-2 bg-zinc-800/80 px-2 py-1 rounded text-[10px] text-zinc-300 font-bold">拡大</div>
+                                                <canvas ref={slopeCanvasRef} width="1200" height="700"></canvas>
+                                            </div>
                                             <div className="ios-card-base overflow-hidden flex-shrink-0"><div className="bg-zinc-800 p-2 text-center text-[14px] font-bold text-zinc-400 uppercase">勾配寸法表</div><table className="history-table text-center w-full"><thead><tr className="bg-[#2c2c2e] sticky top-0"><th className="text-[#ff9f0a] font-bold uppercase py-2">No.</th><th className="text-[#0a84ff] font-bold uppercase py-2">働き</th><th className="text-[#30d158] font-bold uppercase py-2">長さ</th></tr></thead><tbody>{slopeResults.table.map(row => (<tr key={row.i} className="border-b border-[#38383a]"><td className="py-2 text-[#ff9f0a] font-bold text-[20px]">{row.i}</td><td className="text-[#0a84ff] font-bold text-[20px]">{format(row.dist)}</td><td className="text-[#30d158] font-bold text-[20px]">{format(row.height)}</td></tr>))}</tbody></table></div>
                                         </div>
                                     </div>
@@ -707,6 +855,33 @@
                             </div>
                         </div>
                     </main>
+
+                    {/* --- 画像拡大モーダル --- */}
+                    {zoomedImage && (
+                        <div 
+                            className="fixed inset-0 z-[300] flex flex-col items-center justify-center bg-black/90 backdrop-blur-sm px-4 animate-fade-in"
+                            onClick={() => setZoomedImage(null)}
+                        >
+                            <button 
+                                onClick={() => setZoomedImage(null)} 
+                                className="absolute top-6 right-6 bg-zinc-800 text-white rounded-full p-2 z-[310] shadow-lg border border-zinc-700 active:scale-95 transition-all"
+                            >
+                                <Icon name="x" size={24} />
+                            </button>
+                            
+                            <div className="w-full max-w-4xl max-h-[80vh] flex items-center justify-center overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                                {zoomedImage === 'tightframe' && (
+                                    <div className="w-full bg-black p-4 rounded-2xl border border-zinc-700 shadow-2xl">
+                                        <RoofProfileSVG size={tfSize} />
+                                    </div>
+                                )}
+                                {zoomedImage === 'slope' && slopeImageUrl && (
+                                    <img src={slopeImageUrl} alt="Slope Zoom" className="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl border border-zinc-700" />
+                                )}
+                            </div>
+                            <p className="text-zinc-500 font-bold mt-6 text-[14px]">タップして閉じる</p>
+                        </div>
+                    )}
 
                     {isClearModalOpen && (
                         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
